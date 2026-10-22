@@ -12,6 +12,22 @@ Copia canónica de la arquitectura también en el repo: `docs/arquitectura.md`.
 
 ---
 
+
+## Documentos por integrante
+
+| Archivo | Autor | Contenido |
+|---|---|---|
+| [TAREAS-TP5.md](./TAREAS-TP5.md) | Gregorio | Reparto y flujo Git |
+| [ENTREGABLES.md](./ENTREGABLES.md) | Gregorio | Checklist §14 del enunciado |
+| [01-inventario-y-responsabilidades.md](./01-inventario-y-responsabilidades.md) | Manuel Moya | Inventario + responsabilidades (PR) |
+| [02-acoplamientos-y-microservicios.md](./02-acoplamientos-y-microservicios.md) | Jan Lahorca | Acoplamientos + fichas (PR) |
+| [03-datos-comunicaciones-checklist.md](./03-datos-comunicaciones-checklist.md) | Agustín Martínez | Datos, CU, checklist (PR) |
+| [diagrama-arquitectura.md](./diagrama-arquitectura.md) | Grupo | Diagramas Mermaid |
+
+Los archivos `01`–`03` entran por PR de cada integrante (ver `TAREAS-TP5.md`).
+
+---
+
 ## 1. Objetivo de esta etapa
 
 Evolucionar el taller (API REST de TPs 1–4) hacia microservicios. En el TP5 **no** se exige migrar todo el código: se exige justificar límites, datos, comunicaciones y dejar un repo colaborativo listo para los TPs siguientes.
