@@ -6,7 +6,7 @@ Fuente: enunciado §14. Estado al preparar el cierre del análisis.
 |---|---|---|---|
 | 1 | URL del repo | https://github.com/lujangrego99/torque | Listo |
 | 2 | Listado de integrantes | `README.md`, `docs/arquitectura.md`, `docs/TAREAS-TP5.md` | Listo |
-| 3 | Docentes colaboradores | `AdrielAlvarez` invitado; Cortez por mail en la UI | Parcial |
+| 3 | Docentes colaboradores | `AdrielAlvarez` invitado; **Cortez pendiente** (invitar con `edgardo.dario.cortez@gmail.com` desde la UI cuando haya sesión GitHub) | Parcial |
 | 4 | Versión funcional de partida | `monolito/` = TP3 (probado: HTTP/HTTPS, CRUD, descuento con lock) | Listo |
 | 5 | `.gitignore` + vars sensibles | raíz + `monolito/.env.example` | Listo |
 | 6 | Ramas, commits, ≥1 PR | PR #1 docs, PR #2 base TP3; faltan PRs de Manu/Jan/Agus | En curso |
