@@ -1,0 +1,34 @@
+# Dependencias
+node_modules/
+
+# Entorno y secretos
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.pfx
+certs/*.crt
+certs/*.key
+certs/*.pfx
+certs/*.pem
+
+# Logs y runtime
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.tmp
+
+# Cobertura / build
+coverage/
+dist/
+build/
