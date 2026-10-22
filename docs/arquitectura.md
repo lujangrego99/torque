@@ -19,12 +19,12 @@ Copia canónica de la arquitectura también en el repo: `docs/arquitectura.md`.
 |---|---|---|
 | [TAREAS-TP5.md](./TAREAS-TP5.md) | Gregorio | Reparto y flujo Git |
 | [ENTREGABLES.md](./ENTREGABLES.md) | Gregorio | Checklist §14 del enunciado |
-| [01-inventario-y-responsabilidades.md](./01-inventario-y-responsabilidades.md) | Manuel Moya | Inventario + responsabilidades (PR) |
-| [02-acoplamientos-y-microservicios.md](./02-acoplamientos-y-microservicios.md) | Jan Lahorca | Acoplamientos + fichas (PR) |
-| [03-datos-comunicaciones-checklist.md](./03-datos-comunicaciones-checklist.md) | Agustín Martínez | Datos, CU, checklist (PR) |
+| [01-inventario-y-responsabilidades.md](./01-inventario-y-responsabilidades.md) | Grupo | Inventario + responsabilidades |
+| [02-acoplamientos-y-microservicios.md](./02-acoplamientos-y-microservicios.md) | Grupo | Acoplamientos + fichas |
+| [03-datos-comunicaciones-checklist.md](./03-datos-comunicaciones-checklist.md) | Grupo | Datos, CU, checklist |
 | [diagrama-arquitectura.md](./diagrama-arquitectura.md) | Grupo | Diagramas Mermaid |
 
-Los archivos `01`–`03` entran por PR de cada integrante (ver `TAREAS-TP5.md`).
+Los archivos `01`–`03` completan el análisis (puesta en común del grupo).
 
 ---
 
