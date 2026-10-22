@@ -1,13 +1,10 @@
 {
-  "name": "tp04-consenso-raft",
-  "version": "4.0.0",
-  "description": "TP N° 4 - Consenso Raft educativo (3 nodos) - Programación Distribuida (UCH)",
+  "name": "tp03-persistencia-logging-swagger",
+  "version": "3.0.0",
+  "description": "TP N° 3 - Persistencia MongoDB, Winston y OpenAPI/Swagger - Programación Distribuida (UCH)",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "start:node1": "NODE_ID=node1 node src/index.js",
-    "start:node2": "NODE_ID=node2 node src/index.js",
-    "start:node3": "NODE_ID=node3 node src/index.js",
     "cert": "bash scripts/generar-certificado.sh",
     "demo:ttl": "node scripts/demo-ttl.js",
     "demo:rotacion": "node scripts/demo-rotacion.js",
@@ -16,9 +13,7 @@
     "pruebas:crud": "node scripts/pruebas-crud.js",
     "pruebas:persistencia": "node scripts/pruebas-persistencia.js",
     "pruebas:swagger": "node scripts/pruebas-swagger.js",
-    "pruebas:logs": "node scripts/pruebas-logs.js",
-    "pruebas:raft": "node scripts/pruebas-raft.js",
-    "evidencias:raft": "node scripts/generar-evidencias-raft.js"
+    "pruebas:logs": "node scripts/pruebas-logs.js"
   },
   "keywords": [
     "api",
@@ -30,8 +25,6 @@
     "winston",
     "swagger",
     "redis",
-    "raft",
-    "consenso",
     "programacion-distribuida"
   ],
   "author": "Gregorio Luján",

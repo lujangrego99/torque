@@ -4,38 +4,15 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const path = require("path");
-const express = require("express");
-const { cargarConfig } = require("./raft/config");
-
-const config = cargarConfig();
-
-// Aplicar puertos/DB/logs derivados del NODE_ID salvo override explícito en .env
-if (!process.env.PORT) process.env.PORT = String(config.port);
-if (!process.env.HTTPS_PORT) process.env.HTTPS_PORT = String(config.httpsPort);
-if (!process.env.MONGODB_URI) process.env.MONGODB_URI = config.mongoUri;
-// Un directorio de log por nodo evita locks de winston entre procesos.
-if (!process.env.LOG_DIR || process.env.LOG_DIR === "./logs") {
-  process.env.LOG_DIR = `./logs/${config.nodeId}`;
-}
-
-const { crearApp } = require("./app");
+const app = require("./app");
 const logger = require("./logger");
 const { conectar: conectarRedis, urlRedis, redactarUrl } = require("./redis");
 const { conectar: conectarMongo } = require("./mongo");
 const { seedSiVacio } = require("./seed");
-const { RaftNode } = require("./raft/node");
-const { crearRaftRpcRouter } = require("./raft/rpcRoutes");
 
-const HTTP_PORT = Number(process.env.PORT) || config.port;
-const HTTPS_PORT = Number(process.env.HTTPS_PORT) || config.httpsPort;
-const RAFT_PORT = Number(process.env.RAFT_PORT) || config.raftPort;
+const HTTP_PORT = Number(process.env.PORT) || 3000;
+const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 3443;
 const ENABLE_HTTP = process.env.ENABLE_HTTP !== "false";
-
-let raftNode = null;
-
-function getRaftNode() {
-  return raftNode;
-}
 
 function resolverRuta(valor) {
   if (!valor) {
@@ -80,43 +57,16 @@ async function iniciar() {
     );
   }
 
-  logger.info(
-    `Arranque nodo=${config.nodeId} api=${HTTP_PORT} https=${HTTPS_PORT} raft=${RAFT_PORT} db=${config.mongoDb}`
-  );
-
   await conectarMongo();
   await seedSiVacio();
-
-  raftNode = new RaftNode(config);
-  await raftNode.start();
 
   try {
     await conectarRedis();
     logger.info(`Redis/Memurai conectado en ${redactarUrl(urlRedis())}`);
   } catch (err) {
     logger.warn(`No se pudo conectar a Redis (${redactarUrl(urlRedis())}): ${err.message}`);
-    logger.warn(
-      "Arranca igual; POST /api/repuestos/:id/descontar responderá 503 hasta que Redis esté disponible."
-    );
+    logger.warn("HTTPS arranca igual; POST /api/repuestos/:id/descontar responderá 503 hasta que Redis esté disponible.");
   }
-
-  const app = crearApp(getRaftNode);
-  app.set("raft", raftNode);
-
-  const raftApp = express();
-  raftApp.use(express.json());
-  raftApp.use("/raft", crearRaftRpcRouter(getRaftNode));
-  raftApp.get("/", (req, res) => {
-    res.status(200).json({
-      mensaje: "RPC interno Raft (no usar como API de negocio)",
-      nodeId: config.nodeId,
-      endpoints: ["/raft/request-vote", "/raft/append-entries"],
-    });
-  });
-
-  http.createServer(raftApp).listen(RAFT_PORT, () => {
-    logger.info(`Raft  escuchando en http://localhost:${RAFT_PORT}`);
-  });
 
   if (ENABLE_HTTP) {
     http.createServer(app).listen(HTTP_PORT, () => {
@@ -128,11 +78,11 @@ async function iniciar() {
   httpsServer.listen(HTTPS_PORT, () => {
     logger.info(`HTTPS escuchando en https://localhost:${HTTPS_PORT}`);
     logger.info(`Swagger UI en https://localhost:${HTTPS_PORT}/api-docs`);
-    logger.info(`Diagnóstico Raft: http://localhost:${HTTP_PORT}/api/raft/status`);
+    logger.info(`Lock TTL=${ttl} ms · delay de demo=${delay} ms · logs=${logger.LOG_DIR}`);
   });
 }
 
 iniciar().catch((err) => {
-  logger.error(`No se pudo iniciar: ${err.message}`);
+  logger.error(err.message);
   process.exit(1);
 });

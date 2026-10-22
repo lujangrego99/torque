@@ -19,9 +19,11 @@ Docentes colaboradores: `alvarezadriel@uch.edu.ar`, `cortezedgardo@uch.edu.ar`.
 
 | Ruta | Contenido |
 |---|---|
-| `monolito/` | Versión funcional de partida: API del **TP4** (Express + Mongo + Redis + HTTPS + Raft educativo) |
+| `monolito/` | Versión funcional de partida: API del **TP3** (Express + Mongo + Redis + HTTPS + Winston + Swagger). **Sin Raft.** |
 | `docs/arquitectura.md` | Análisis de responsabilidades, acoplamientos, fichas de microservicios, matrices y checklist (TP5) |
 | `docs/diagrama-arquitectura.md` | Diagramas Mermaid de la arquitectura propuesta |
+
+> El TP4 (Raft) fue un ejercicio individual de consenso sobre el mismo dominio. Para partir en microservicios estorba (réplica del monolito entero), así que la base compartida del grupo es el TP3.
 
 ## Microservicios propuestos (etapa de diseño)
 
@@ -29,7 +31,7 @@ Docentes colaboradores: `alvarezadriel@uch.edu.ar`, `cortezedgardo@uch.edu.ar`.
 2. **`inventory-service`** — stock de repuestos y descuento concurrente (Redis).  
 3. **`api-gateway`** — TLS, enrutamiento y Swagger agregado.
 
-La implementación de la separación queda para TPs posteriores. Raft del TP4 se documenta como infraestructura de réplica del monolito, no como servicio de negocio.
+La implementación de la separación queda para TPs posteriores.
 
 ## Arranque del monolito (punto de partida)
 
@@ -39,15 +41,12 @@ cp .env.example .env
 npm install
 # MongoDB en :27017 y Redis en :6379
 # Certificado: bash scripts/generar-certificado.sh  (o el .ps1 en Windows)
-
-# Un nodo (smoke):
 npm start
-
-# Cluster Raft (3 terminales):
-npm run start:node1
-npm run start:node2
-npm run start:node3
 ```
+
+- HTTP `http://localhost:3000`
+- HTTPS `https://localhost:3443` (`curl -k`)
+- Swagger `http://localhost:3000/api-docs`
 
 Detalle: `monolito/README.md`.
 
