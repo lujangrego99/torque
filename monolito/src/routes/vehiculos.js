@@ -1,16 +1,11 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const Vehiculo = require("../models/vehiculo");
 const logger = require("../logger");
 const { parsearObjectId, esObjetoJson } = require("../utils/ids");
+const { interpretarErrorPersistencia } = require("../utils/errores");
 const { serializarVehiculo } = require("../utils/serializar");
-const { responderNoLeader } = require("./raft");
 
 const router = express.Router();
-
-function getRaft(req) {
-  return req.app.get("raft");
-}
 
 function camposVehiculo(body) {
   return {
@@ -26,52 +21,11 @@ function responderErrores(res, errores) {
   return res.status(400).json({ error: "Datos inválidos o incompletos.", detalles: errores });
 }
 
-function validarCampos(campos) {
-  const errores = [];
-  if (typeof campos.marca !== "string" || !campos.marca.trim()) {
-    errores.push("marca es obligatoria.");
-  }
-  if (typeof campos.modelo !== "string" || !campos.modelo.trim()) {
-    errores.push("modelo es obligatorio.");
-  }
-  if (!Number.isInteger(campos.anio) || campos.anio < 1900) {
-    errores.push("anio debe ser un entero >= 1900.");
-  }
-  if (typeof campos.patente !== "string" || !/^[A-Za-z0-9]{6,8}$/.test(campos.patente)) {
-    errores.push("patente debe ser alfanumérica de 6 a 8 caracteres.");
-  }
-  if (!Number.isInteger(campos.kilometraje) || campos.kilometraje < 0) {
-    errores.push("kilometraje debe ser un entero >= 0.");
-  }
-  return errores;
-}
-
-async function proponerORedirect(req, res, next, command) {
-  const raft = getRaft(req);
-  if (!raft.esLeader()) {
-    logger.warn(`Escritura rechazada en follower ${raft.nodeId} type=${command.type}`);
-    return responderNoLeader(res, raft);
-  }
-
-  try {
-    const resultado = await raft.proponer(command);
-    if (resultado.status === 204) {
-      return res.status(204).send();
-    }
-    return res.status(resultado.status).json(resultado.body);
-  } catch (err) {
-    if (err.codigo === "not_leader") {
-      return responderNoLeader(res, raft);
-    }
-    if (err.codigo === "raft_timeout") {
-      logger.error(err.message);
-      return res.status(503).json({
-        error: "No se alcanzó quorum para confirmar la operación.",
-        detalles: [err.message],
-      });
-    }
-    return next(err);
-  }
+function responderPersistencia(res, interpretado) {
+  return res.status(interpretado.status).json({
+    error: interpretado.error,
+    detalles: interpretado.detalles,
+  });
 }
 
 router.get("/", async (req, res, next) => {
@@ -109,17 +63,22 @@ router.post("/", async (req, res, next) => {
     return responderErrores(res, ["El body debe ser un objeto JSON."]);
   }
 
-  const campos = camposVehiculo(req.body);
-  const errores = validarCampos(campos);
-  if (errores.length) {
-    return responderErrores(res, errores);
+  try {
+    const creado = await Vehiculo.create(camposVehiculo(req.body));
+    logger.info(`Vehículo creado id=${creado._id} patente=${creado.patente}.`);
+    return res.status(201).json(serializarVehiculo(creado));
+  } catch (err) {
+    const interpretado = interpretarErrorPersistencia(err);
+    if (interpretado) {
+      if (interpretado.status === 409) {
+        logger.warn(`POST /api/vehiculos: conflicto de unicidad (${interpretado.detalles.join("; ")}).`);
+      } else {
+        logger.warn(`POST /api/vehiculos: validación rechazada (${interpretado.detalles.join("; ")}).`);
+      }
+      return responderPersistencia(res, interpretado);
+    }
+    return next(err);
   }
-
-  const _id = new mongoose.Types.ObjectId().toString();
-  return proponerORedirect(req, res, next, {
-    type: "vehiculo.create",
-    payload: { _id, ...campos },
-  });
 });
 
 router.put("/:id", async (req, res, next) => {
@@ -134,24 +93,29 @@ router.put("/:id", async (req, res, next) => {
     return responderErrores(res, ["El body debe ser un objeto JSON."]);
   }
 
-  const campos = camposVehiculo(req.body);
-  const errores = validarCampos(campos);
-  if (errores.length) {
-    return responderErrores(res, errores);
-  }
-
-  const raft = getRaft(req);
-  if (raft.esLeader()) {
+  try {
     const existente = await Vehiculo.findById(id);
     if (!existente) {
+      logger.warn(`PUT /api/vehiculos/${id}: no encontrado.`);
       return res.status(404).json({ error: "Vehículo no encontrado." });
     }
-  }
 
-  return proponerORedirect(req, res, next, {
-    type: "vehiculo.update",
-    payload: { _id: String(id), ...campos },
-  });
+    existente.set(camposVehiculo(req.body));
+    const actualizado = await existente.save();
+    logger.info(`Vehículo actualizado id=${id} patente=${actualizado.patente}.`);
+    return res.status(200).json(serializarVehiculo(actualizado));
+  } catch (err) {
+    const interpretado = interpretarErrorPersistencia(err);
+    if (interpretado) {
+      if (interpretado.status === 409) {
+        logger.warn(`PUT /api/vehiculos/${id}: conflicto de unicidad.`);
+      } else {
+        logger.warn(`PUT /api/vehiculos/${id}: validación rechazada (${interpretado.detalles.join("; ")}).`);
+      }
+      return responderPersistencia(res, interpretado);
+    }
+    return next(err);
+  }
 });
 
 router.delete("/:id", async (req, res, next) => {
@@ -161,18 +125,17 @@ router.delete("/:id", async (req, res, next) => {
     return responderErrores(res, ["El id debe ser un ObjectId hexadecimal de 24 caracteres."]);
   }
 
-  const raft = getRaft(req);
-  if (raft.esLeader()) {
-    const existente = await Vehiculo.findById(id);
-    if (!existente) {
+  try {
+    const eliminado = await Vehiculo.findByIdAndDelete(id);
+    if (!eliminado) {
+      logger.warn(`DELETE /api/vehiculos/${id}: no encontrado.`);
       return res.status(404).json({ error: "Vehículo no encontrado." });
     }
+    logger.info(`Vehículo eliminado id=${id} patente=${eliminado.patente}.`);
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
   }
-
-  return proponerORedirect(req, res, next, {
-    type: "vehiculo.delete",
-    payload: { _id: String(id) },
-  });
 });
 
 module.exports = router;

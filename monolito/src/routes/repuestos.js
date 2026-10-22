@@ -6,13 +6,8 @@ const { esperar } = require("../utils/delay");
 const { parsearObjectId, esObjetoJson } = require("../utils/ids");
 const { serializarRepuesto } = require("../utils/serializar");
 const { reiniciarRepuestos } = require("../seed");
-const { responderNoLeader } = require("./raft");
 
 const router = express.Router();
-
-function getRaft(req) {
-  return req.app.get("raft");
-}
 
 function parsearCantidad(body) {
   if (!esObjetoJson(body)) {
@@ -44,11 +39,7 @@ function responderRedisCaido(res) {
   });
 }
 
-/**
- * Demo de carrera del TP2/TP3: check-then-act local SIN Raft (solo Leader).
- * Sirve para contrastar con /descontar (Redis + Raft).
- */
-async function ejecutarDescuentoLocal(id, cantidad) {
+async function ejecutarDescuento(id, cantidad) {
   const existente = await Repuesto.findById(id);
   if (!existente) {
     return { ok: false, codigo: "no_encontrado" };
@@ -58,6 +49,11 @@ async function ejecutarDescuentoLocal(id, cantidad) {
     return { ok: false, codigo: "sin_stock", item: existente };
   }
 
+  // Retardo artificial entre la lectura y la escritura. Sin lock, otra
+  // solicitud entra en esa ventana, también ve stock suficiente y las dos
+  // hacen $inc: el stock queda negativo (check-then-act). El lock de Redis
+  // sigue siendo quien serializa la sección crítica; no hay filtro
+  // { stock: { $gte: cantidad } } a propósito.
   await esperar(delayDemoMs());
 
   const actualizado = await Repuesto.findByIdAndUpdate(
@@ -106,17 +102,11 @@ router.get("/", async (req, res, next) => {
 });
 
 router.post("/reiniciar", async (req, res, next) => {
-  const raft = getRaft(req);
-  if (!raft.esLeader()) {
-    return responderNoLeader(res, raft);
-  }
-
   try {
     const items = await reiniciarRepuestos();
     return res.status(200).json({
-      mensaje: "Stock restaurado a la semilla (solo DB local del Leader; no pasa por Raft).",
+      mensaje: "Stock restaurado a la semilla.",
       items,
-      nota: "Para demos de carrera. El descuento con consenso usa POST .../descontar.",
     });
   } catch (err) {
     return next(err);
@@ -160,11 +150,6 @@ router.get("/:id/lock", async (req, res) => {
 });
 
 router.post("/:id/descontar-sin-lock", async (req, res, next) => {
-  const raft = getRaft(req);
-  if (!raft.esLeader()) {
-    return responderNoLeader(res, raft);
-  }
-
   const id = parsearObjectId(req.params.id);
   if (id === null) {
     return responderErrores(res, ["El id debe ser un ObjectId hexadecimal de 24 caracteres."]);
@@ -177,24 +162,14 @@ router.post("/:id/descontar-sin-lock", async (req, res, next) => {
   }
 
   try {
-    const resultado = await ejecutarDescuentoLocal(id, parsed.cantidad);
-    return responderDescuento(res, resultado, { proteccion: false, via: "local-sin-raft" });
+    const resultado = await ejecutarDescuento(id, parsed.cantidad);
+    return responderDescuento(res, resultado, { proteccion: false });
   } catch (err) {
     return next(err);
   }
 });
 
-/**
- * Integración TP2 + TP4:
- * Redis decide quién entra a la sección crítica;
- * Raft ordena, replica y confirma la modificación.
- */
 router.post("/:id/descontar", async (req, res, next) => {
-  const raft = getRaft(req);
-  if (!raft.esLeader()) {
-    return responderNoLeader(res, raft);
-  }
-
   const id = parsearObjectId(req.params.id);
   if (id === null) {
     return responderErrores(res, ["El id debe ser un ObjectId hexadecimal de 24 caracteres."]);
@@ -220,47 +195,14 @@ router.post("/:id/descontar", async (req, res, next) => {
       });
     }
 
-    // Retardo artificial dentro de la sección crítica (demo carrera vs lock).
-    await esperar(delayDemoMs());
-
-    const existente = await Repuesto.findById(id);
-    if (!existente) {
-      return res.status(404).json({ error: "Repuesto no encontrado." });
-    }
-    if (existente.stock < parsed.cantidad) {
-      return res.status(409).json({
-        error: "Stock insuficiente.",
-        item: serializarRepuesto(existente),
-      });
-    }
-
-    const resultado = await raft.proponer({
-      type: "repuesto.descontar",
-      payload: {
-        _id: String(id),
-        cantidad: parsed.cantidad,
-      },
+    const resultado = await ejecutarDescuento(id, parsed.cantidad);
+    return responderDescuento(res, resultado, {
+      proteccion: true,
+      lock: adquirido.key,
     });
-
-    if (resultado.status === 200) {
-      return res.status(200).json({
-        ...resultado.body,
-        lock: adquirido.key,
-      });
-    }
-    return res.status(resultado.status).json(resultado.body);
   } catch (err) {
     if (err.codigo === "redis_down") {
       return responderRedisCaido(res);
-    }
-    if (err.codigo === "raft_timeout") {
-      return res.status(503).json({
-        error: "No se alcanzó quorum para confirmar la operación.",
-        detalles: [err.message],
-      });
-    }
-    if (err.codigo === "not_leader") {
-      return responderNoLeader(res, raft);
     }
     return next(err);
   } finally {

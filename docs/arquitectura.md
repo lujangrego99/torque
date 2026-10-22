@@ -35,18 +35,17 @@ Flujo: ramas por tarea → Pull Request → review → merge a `main`. Tag de en
 
 ## 3. Punto de partida
 
-**Versión base**: monolito del **TP4 (Raft educativo)** ubicado en `monolito/` del repo.
+**Versión base**: monolito del **TP3** (persistencia MongoDB + Winston + Swagger + HTTPS + lock Redis) ubicado en `monolito/` del repo.
 
 Dominio: taller mecánico.
 
 | Capacidad | Qué hace hoy |
 |---|---|
-| Vehículos | CRUD con patente única; escrituras vía Raft |
-| Repuestos / stock | Listado, descuento con y sin lock Redis; descuento “seguro” vía Redis + Raft |
-| Infra TP4 | Cluster de 3 nodos, Leader, log, quorum, State Machine |
+| Vehículos | CRUD con patente única sobre MongoDB |
+| Repuestos / stock | Listado; descuento con y sin lock Redis |
 | Transversal | HTTPS, Winston, Swagger/OpenAPI, MongoDB, Redis |
 
-**Nota de diseño**: Raft es **réplica/consenso del monolito**, no una capacidad de negocio. En la propuesta de microservicios se trata como infraestructura a reevaluar por servicio en TPs posteriores. El análisis de límites se hace sobre las responsabilidades de negocio (vehículos e inventario) más un gateway de acceso.
+**Por qué no TP4**: el Raft del TP4 replica el monolito entero (Leader, log, quorum). Eso es un ejercicio de consenso, no un límite de negocio. Mezclarlo con la separación en microservicios obliga a arrastrar cluster, 503 de follower y State Machine a cada corte. El grupo acordó usar el TP3 como base limpia; el TP4 queda como trabajo individual previo fuera de este repo.
 
 ---
 
@@ -54,18 +53,17 @@ Dominio: taller mecánico.
 
 | Funcionalidad / endpoint | Responsabilidad actual | Datos utilizados | Dependencias |
 |---|---|---|---|
-| `GET /api/vehiculos` | Listar parque de vehículos | `vehiculos` (Mongo local) | Lectura local (sin Raft) |
-| `GET /api/vehiculos/:id` | Obtener un vehículo | `vehiculos` | Lectura local |
-| `POST /api/vehiculos` | Alta de vehículo | marca, modelo, año, patente, km | Validación + Raft Leader + State Machine → Mongo |
+| `GET /api/vehiculos` | Listar parque de vehículos | `vehiculos` (Mongo) | — |
+| `GET /api/vehiculos/:id` | Obtener un vehículo | `vehiculos` | — |
+| `POST /api/vehiculos` | Alta de vehículo | marca, modelo, año, patente, km | Validación + Mongo |
 | `PUT /api/vehiculos/:id` | Reemplazo completo | mismos campos + id | Idem. + unicidad de patente |
-| `DELETE /api/vehiculos/:id` | Baja | id | Raft Leader |
-| `GET /api/repuestos` | Listar stock | `repuestos` | Lectura local |
-| `GET /api/repuestos/:id` | Obtener repuesto | `repuestos` | Lectura local |
+| `DELETE /api/vehiculos/:id` | Baja | id | Mongo |
+| `GET /api/repuestos` | Listar stock | `repuestos` | — |
+| `GET /api/repuestos/:id` | Obtener repuesto | `repuestos` | — |
 | `GET /api/repuestos/:id/lock` | Diagnosticar lock | Redis `lock:repuesto:{id}` | Redis |
-| `POST /api/repuestos/:id/descontar-sin-lock` | Demo carrera (check-then-act) | stock | Solo Leader; sin Redis; puede oversell |
-| `POST /api/repuestos/:id/descontar` | Descontar stock con exclusión mutua | stock, cantidad | Redis lock → Raft → Mongo |
+| `POST /api/repuestos/:id/descontar-sin-lock` | Demo carrera (check-then-act) | stock | Sin Redis; puede oversell |
+| `POST /api/repuestos/:id/descontar` | Descontar stock con exclusión mutua | stock, cantidad | Redis lock → Mongo |
 | `POST /api/repuestos/reiniciar` | Reset demo de stock | seeds de repuestos | Seed / Mongo |
-| `GET /api/raft/status`, `/api/raft/log` | Diagnóstico de consenso | estado Raft | Cluster interno |
 | `GET /api-docs` (+ `.json`) | Documentación OpenAPI | spec generada | Toda la API |
 | HTTPS / Winston / seed | Arranque, logs, datos iniciales | `.env`, certs, logs | Mongo + Redis |
 
@@ -73,9 +71,8 @@ Reglas de negocio vigentes:
 
 - Patente única (conflicto → 409).
 - Validación de campos de vehículo (tipos, rangos, formato de patente).
-- Stock no negativo en el camino con lock; el camino sin lock existe a propósito para demo de carrera.
-- Escrituras de negocio solo en el Leader (follower → 503 con `leaderId`).
-
+- Stock insuficiente → 409 en el camino con lock; el camino sin lock existe a propósito para demo de carrera.
+- Si Redis no está, el descuento con lock responde 503.
 ---
 
 ## 5. Identificación de responsabilidades
@@ -113,20 +110,16 @@ Reglas de negocio vigentes:
 7. **Cambian juntos**: certificados, paths públicos, agregación de docs.  
 8. **Independiente**: sí; es borde, no dominio.
 
-### R4 — Consenso / réplica (contexto TP4, fuera del corte de negocio)
-
-Raft hoy envuelve escrituras del monolito. No se propone como microservicio de negocio: es un mecanismo de consistencia. En etapas posteriores se decidirá si cada servicio replica con Raft, con otro patrón, o queda single-instance.
-
 ---
 
 ## 6. Acoplamientos detectados (≥ 3)
 
 | Caso | Acoplamiento | Problema | Desacople propuesto |
 |---|---|---|---|
-| 1 | Vehículos y repuestos en el mismo proceso Express y el mismo deploy | Un cambio de stock obliga a redeploy de flota (y viceversa); falla compartida | Servicios independientes con deploys y repos lógicos separados bajo el monorepo |
+| 1 | Vehículos y repuestos en el mismo proceso Express y el mismo deploy | Un cambio de stock obliga a redeploy de flota (y viceversa); falla compartida | Servicios independientes con deploys separados bajo el monorepo |
 | 2 | Misma instancia Mongo / mismo arranque para ambos dominios | Un schema o seed mal hecho afecta al otro; no hay propiedad clara de datos | Base (o al menos DB name) por servicio; solo el dueño escribe |
-| 3 | Descontar stock mezcla lock Redis + comando Raft + update Mongo en la misma ruta | Tres preocupaciones en un solo flujo; difícil evolucionar concurrencia sin tocar consenso | `inventory-service` dueño de stock y del lock; Raft (si sigue) queda interno a ese servicio |
-| 4 | OpenAPI / logger / seed centralizados en un solo `app` | Docs y arranque acoplados al monolito | Gateway agrega docs; cada servicio documenta su contrato |
+| 3 | Descontar stock mezcla validación de negocio + lock Redis + update Mongo en la misma ruta del monolito | La política de concurrencia vive pegada al resto de la API; no se puede escalar ni fallar solo el stock | `inventory-service` dueño exclusivo de stock y del lock |
+| 4 | OpenAPI / logger / seed / HTTPS centralizados en un solo `app` | Docs y borde acoplados al monolito | Gateway concentra TLS y docs; cada servicio documenta su contrato |
 
 ---
 
@@ -308,7 +301,7 @@ torque/
 ├── docs/
 │   ├── arquitectura.md
 │   └── diagrama-arquitectura.md
-└── monolito/          # punto de partida funcional (TP4)
+└── monolito/          # punto de partida funcional (TP3, sin Raft)
     ├── package.json
     ├── .env.example
     ├── src/
@@ -326,7 +319,7 @@ Próximos TPs: carpetas `services/vehicles-service`, `services/inventory-service
 | 1 | URL del repo | `https://github.com/lujangrego99/torque` |
 | 2 | Listado de integrantes | Sección 2 |
 | 3 | Docentes colaboradores | Invitados por mail del enunciado |
-| 4 | Versión base | `monolito/` = TP4 |
+| 4 | Versión base | `monolito/` = TP3 (sin Raft) |
 | 5 | `.gitignore` + `.env.example` | Raíz + monolito |
 | 6 | Ramas / commits / ≥1 PR | Flujo docs/arquitectura |
 | 7–16 | Análisis, fichas, matrices, diagrama, checklist | Este doc + `docs/` |

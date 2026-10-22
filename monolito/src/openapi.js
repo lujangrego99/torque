@@ -3,24 +3,18 @@ const IDS = require("./ids");
 const spec = {
   openapi: "3.0.3",
   info: {
-    title: "API REST de taller (Raft)",
-    version: "4.0.0",
+    title: "API REST de taller",
+    version: "3.0.0",
     description:
-      "API del TP N° 4 de Programación Distribuida (UCH). Cluster de 3 nodos con Raft educativo. Las escrituras de vehículos pasan por log/commit/State Machine. Redis solo protege la sección crítica del descuento; no elige Leader ni hace commit. Los RPC internos (/raft/* en puerto 700x) no son API de negocio.",
+      "API del TP N° 3 de Programación Distribuida (UCH). CRUD de vehículos persistido en MongoDB, stock de repuestos con exclusión mutua en Redis/Memurai, HTTPS y logging con Winston.",
   },
   tags: [
-    { name: "Vehículos", description: "GET local. POST/PUT/DELETE solo en el Leader (vía Raft)." },
-    {
-      name: "Repuestos",
-      description: "Descontar: lock Redis + comando Raft. GET local.",
-    },
-    { name: "Raft", description: "Diagnóstico del nodo (no modificar el protocolo desde acá)." },
+    { name: "Vehículos", description: "Recurso principal. Persistido en MongoDB." },
+    { name: "Repuestos", description: "Stock concurrente. Persistido en MongoDB, lock en Redis." },
   ],
   servers: [
-    { url: "http://localhost:3100", description: "node1 HTTP" },
-    { url: "http://localhost:3101", description: "node2 HTTP" },
-    { url: "http://localhost:3102", description: "node3 HTTP" },
-    { url: "https://localhost:3443", description: "node1 HTTPS" },
+    { url: "https://localhost:3443", description: "HTTPS local" },
+    { url: "http://localhost:3000", description: "HTTP local (TP1)" },
   ],
   components: {
     schemas: {
@@ -150,53 +144,16 @@ const spec = {
         },
         responses: {
           201: {
-            description: "Creado tras commit Raft y apply en State Machine.",
+            description: "Creado y persistido.",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Vehiculo" } } },
           },
           400: {
-            description: "Datos inválidos.",
+            description: "Datos inválidos (validación de Mongoose).",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
           409: {
             description: "Patente duplicada.",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-          },
-          503: {
-            description: "Nodo no es Leader, o no hay quorum.",
-          },
-        },
-      },
-    },
-    "/api/raft/status": {
-      get: {
-        tags: ["Raft"],
-        summary: "Estado observable del nodo",
-        responses: {
-          200: {
-            description: "Identidad, rol, término, Leader, commit/applied.",
-            content: {
-              "application/json": {
-                example: {
-                  nodeId: "node1",
-                  role: "LEADER",
-                  currentTerm: 2,
-                  leaderId: "node1",
-                  commitIndex: 3,
-                  lastApplied: 3,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    "/api/raft/log": {
-      get: {
-        tags: ["Raft"],
-        summary: "Vista del log Raft local",
-        responses: {
-          200: {
-            description: "Entradas con flags committed/applied.",
           },
         },
       },
@@ -318,7 +275,7 @@ const spec = {
     "/api/repuestos/{id}/descontar": {
       post: {
         tags: ["Repuestos"],
-        summary: "Descontar stock: lock Redis + commit Raft",
+        summary: "Descontar stock con lock Redis",
         parameters: [{ $ref: "#/components/parameters/RepuestoId" }],
         requestBody: {
           required: true,
@@ -330,18 +287,18 @@ const spec = {
           },
         },
         responses: {
-          200: { description: "Stock descontado tras quorum Raft (y lock Redis)." },
+          200: { description: "Stock descontado y persistido en MongoDB." },
           400: { description: "Identificador o cantidad inválidos." },
           404: { description: "Repuesto no encontrado." },
           409: { description: "Recurso ocupado o stock insuficiente." },
-          503: { description: "No Leader / sin quorum / Redis caído." },
+          503: { description: "Redis/Memurai no disponible." },
         },
       },
     },
     "/api/repuestos/{id}/descontar-sin-lock": {
       post: {
         tags: ["Repuestos"],
-        summary: "Descontar stock SIN lock ni Raft (demo de carrera, solo Leader)",
+        summary: "Descontar stock SIN lock (demo de carrera)",
         parameters: [{ $ref: "#/components/parameters/RepuestoId" }],
         requestBody: {
           required: true,
