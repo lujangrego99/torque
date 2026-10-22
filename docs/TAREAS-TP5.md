@@ -1,32 +1,37 @@
-# Tareas por integrante — TP5
+# Tareas TP5 — puesta en común
 
 Repo: https://github.com/lujangrego99/torque  
-Flujo: **rama → commit → Pull Request → merge a `main`**.  
-No trabajar directo sobre `main`.
+El análisis se armó en puesta en común del grupo. La documentación quedó centralizada en `docs/`.
 
-## Reparto
+## Integrantes
 
-| Integrante | GitHub | Rama | Archivo a agregar | Entregables del enunciado |
-|---|---|---|---|---|
-| Gregorio Luján | `lujangrego99` | (ya en historial + este doc) | Repo, monolito TP3, `arquitectura.md`, diagrama, `ENTREGABLES.md` | 1–6 (base colaborativa) + marco del análisis |
-| Manuel Moya | `ManusMoya` | `docs/manu-inventario` | `docs/01-inventario-y-responsabilidades.md` | 7–8 inventario + responsabilidades |
-| Jan Lahorca | `janlahorca` | `docs/jan-acoplamientos-servicios` | `docs/02-acoplamientos-y-microservicios.md` | 9–11 acoplamientos + microservicios + fichas |
-| Agustín Martínez | `AgustinEMCE` | `docs/agus-datos-comunicaciones` | `docs/03-datos-comunicaciones-checklist.md` | 12–16 datos, comunicaciones, CU, diagrama ref., checklist |
+| Nombre | GitHub |
+|---|---|
+| Gregorio Luján | `lujangrego99` |
+| Manuel Moya | `ManusMoya` |
+| Jan Lahorca | `janlahorca` |
+| Agustín Martínez | `AgustinEMCE` |
+
+## Documentos
+
+| Archivo | Contenido |
+|---|---|
+| `arquitectura.md` | Visión completa |
+| `01-inventario-y-responsabilidades.md` | Inventario + responsabilidades |
+| `02-acoplamientos-y-microservicios.md` | Acoplamientos + fichas |
+| `03-datos-comunicaciones-checklist.md` | Datos, comunicaciones, CU, checklist |
+| `diagrama-arquitectura.md` | Diagramas Mermaid |
+| `ENTREGABLES.md` | Seguimiento §14 |
 
 ## Microservicios acordados
 
-1. `vehicles-service` — parque de vehículos  
-2. `inventory-service` — stock + locks Redis  
-3. `api-gateway` — TLS, routing, Swagger  
+1. `vehicles-service`  
+2. `inventory-service`  
+3. `api-gateway`  
 
-Base de código: `monolito/` = **TP3** (sin Raft).
+Base: `monolito/` = TP3 (sin Raft).
 
-## Docentes
-
-- `AdrielAlvarez` invitado  
-- `cortezedgardo@uch.edu.ar` → invitar por mail en Settings → Collaborators  
-
-## Al cerrar la etapa
+## Cierre
 
 ```bash
 git tag tp5-entrega
