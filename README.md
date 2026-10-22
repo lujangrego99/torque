@@ -22,6 +22,7 @@ Docentes colaboradores: `alvarezadriel@uch.edu.ar`, `cortezedgardo@uch.edu.ar`.
 | `monolito/` | Versión funcional de partida: API del **TP3** (Express + Mongo + Redis + HTTPS + Winston + Swagger). **Sin Raft.** |
 | `docs/arquitectura.md` | Análisis de responsabilidades, acoplamientos, fichas de microservicios, matrices y checklist (TP5) |
 | `docs/diagrama-arquitectura.md` | Diagramas Mermaid de la arquitectura propuesta |
+| `docs/TP05-Entrega-Campus.pdf` | Resumen para subir al campus (URL, integrantes, checklist) |
 
 > El TP4 (Raft) fue un ejercicio individual de consenso sobre el mismo dominio. Para partir en microservicios estorba (réplica del monolito entero), así que la base compartida del grupo es el TP3.
 
