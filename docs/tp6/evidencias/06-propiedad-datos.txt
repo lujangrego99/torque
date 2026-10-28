@@ -1,0 +1,40 @@
+# Cada base solo contiene las colecciones de su servicio:
+
+$ docker compose exec -T vehicles-db mongosh --quiet vehicles --eval 'JSON.stringify({db: db.getName(), colecciones: db.getCollectionNames()})'
+{"db":"vehicles","colecciones":["vehiculos"]}
+
+
+$ docker compose exec -T inventory-db mongosh --quiet inventory --eval 'JSON.stringify({db: db.getName(), colecciones: db.getCollectionNames()})'
+{"db":"inventory","colecciones":["repuestos"]}
+
+
+$ docker compose exec -T workorders-db mongosh --quiet workorders --eval 'JSON.stringify({db: db.getName(), colecciones: db.getCollectionNames()})'
+{"db":"workorders","colecciones":["ordenes"]}
+
+# Cada servicio solo conoce SU base; workorders conoce a los otros por URL HTTP, no por Mongo:
+
+$ docker compose exec -T vehicles-service sh -c 'env | grep -E "MONGODB_URI|REDIS_URL|_SERVICE_URL" | sort'
+MONGODB_URI=mongodb://vehicles-db:27017/vehicles
+
+
+$ docker compose exec -T inventory-service sh -c 'env | grep -E "MONGODB_URI|REDIS_URL|_SERVICE_URL" | sort'
+MONGODB_URI=mongodb://inventory-db:27017/inventory
+REDIS_URL=redis://redis:6379
+
+
+$ docker compose exec -T workorders-service sh -c 'env | grep -E "MONGODB_URI|REDIS_URL|_SERVICE_URL" | sort'
+INVENTORY_SERVICE_URL=http://inventory-service:3000
+MONGODB_URI=mongodb://workorders-db:27017/workorders
+VEHICLES_SERVICE_URL=http://vehicles-service:3000
+
+
+$ docker compose exec -T api-gateway sh -c 'env | grep -E "MONGODB_URI|REDIS_URL|_SERVICE_URL" | sort'
+INVENTORY_SERVICE_URL=http://inventory-service:3000
+VEHICLES_SERVICE_URL=http://vehicles-service:3000
+WORKORDERS_SERVICE_URL=http://workorders-service:3000
+
+# La orden guarda solo referencias lógicas (ids) + copia de patente/código:
+
+$ docker compose exec -T workorders-db mongosh --quiet workorders --eval 'JSON.stringify(db.ordenes.findOne({}, {vehiculoId:1, patente:1, "items.repuestoId":1, "items.codigo":1, estado:1}))'
+{"_id":"6ae286e01d2c3309a21a81e3","vehiculoId":"68c000000000000000000001","patente":"AB123CD","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001"}]}
+

@@ -1,0 +1,32 @@
+
+$ curl -X POST http://localhost:3000/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Peugeot","modelo":"208","anio":2023,"patente":"AF208PP","kilometraje":5000}'
+{"id":"6ae28883bc3fa7a0e87dc330","marca":"Peugeot","modelo":"208","anio":2023,"patente":"AF208PP","kilometraje":5000}
+HTTP 201
+# docker compose down (SIN -v): se eliminan los contenedores, los volúmenes quedan
+
+$ docker compose down 2>&1 | tail -n 3
+ Network torque_backend  Removing
+ Network torque_backend  Removed
+ Network torque_edge  Removed
+
+
+$ docker volume ls --filter name=torque --format '{{.Name}}'
+torque_inventory-data
+torque_vehicles-data
+torque_workorders-data
+
+
+$ docker compose up -d --wait 2>&1 | tail -n 2
+ Container torque-workorders-service-1  Healthy
+ Container torque-api-gateway-1  Healthy
+
+
+$ curl -s http://localhost:3000/api/vehiculos | grep -o '"patente":"AF208PP"[^}]*' || echo 'NO ENCONTRADO'
+"patente":"AF208PP","kilometraje":5000
+
+
+$ curl -s http://localhost:3000/api/ordenes | grep -o -E '"estado":"(CONFIRMADA|FALLIDA|PENDIENTE)","items' | sort | uniq -c
+      6 "estado":"CONFIRMADA","items
+      2 "estado":"FALLIDA","items
+
+# Contenedores nuevos (otro ID), mismos datos. 'docker compose down -v' sí los borraría.
