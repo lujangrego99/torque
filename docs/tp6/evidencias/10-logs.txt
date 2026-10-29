@@ -1,27 +1,27 @@
 
 $ docker compose logs --no-color --tail 4 vehicles-service inventory-service workorders-service api-gateway
-vehicles-service-1  | 2026-10-28T23:43:42.856Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 26ms rid=1fcbcf50-7151-42bb-9622-b9b4a2d7694f
-vehicles-service-1  | 2026-10-28T23:43:42.985Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 8ms rid=080ea902-22b2-46f6-9a6c-296b365c2ef8
-vehicles-service-1  | 2026-10-28T23:43:44.055Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 3ms rid=bb52b9dd-56e5-4b8d-bd4e-8be71669ab98
-vehicles-service-1  | 2026-10-28T23:43:52.895Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 3ms rid=50ab02fe-9f5c-4b22-a437-613e05602dd9
+api-gateway-1  | 2026-10-29T23:39:25.241Z [INFO] [api-gateway] HTTP GET /api/ordenes?estado=FALLIDA → workorders-service 200 6ms rid=bdf0176a-706e-48b4-80ee-7562e52720c9
+api-gateway-1       | 2026-10-29T23:39:33.028Z [INFO] [api-gateway] HTTP POST /api/repuestos/reiniciar → inventory-service 200 11ms rid=fd55d310-2d6b-4eff-819d-203e81876bf0
+api-gateway-1       | 2026-10-29T23:39:33.678Z [ERROR] [api-gateway] HTTP POST /api/ordenes → workorders-service 503 638ms rid=0bc1cf0c-68bf-4fcd-94a7-c83ba38ad2c2
+api-gateway-1       | 2026-10-29T23:39:35.692Z [INFO] [api-gateway] HTTP GET /api/repuestos/68c000000000000000000013 → inventory-service 200 3ms rid=2bd03d97-c899-46dc-b87f-7769bd62767a
+vehicles-service-1  | 2026-10-29T23:39:23.058Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 9ms rid=cbd4707d-e71e-431b-8303-0fbe0278bbf3
+vehicles-service-1  | 2026-10-29T23:39:23.114Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 4ms rid=8af29d18-73f5-4dd5-bc56-08cfbabf6068
+vehicles-service-1  | 2026-10-29T23:39:24.167Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 2ms rid=f24d4b11-3812-41b9-a1a3-829ac883ef79
+vehicles-service-1  | 2026-10-29T23:39:33.105Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 5ms rid=0bc1cf0c-68bf-4fcd-94a7-c83ba38ad2c2
 workorders-service-1  | > node src/index.js
-inventory-service-1   | 2026-10-28T23:43:52.836Z [INFO] [inventory-service] POST /api/repuestos/reiniciar 200 7ms rid=eaf67e34-8fb3-4cf6-ba4d-719ad27826b9
-inventory-service-1   | 2026-10-28T23:43:52.912Z [INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 3ms rid=50ab02fe-9f5c-4b22-a437-613e05602dd9
-inventory-service-1   | 2026-10-28T23:43:53.953Z [INFO] [inventory-service] Stock descontado id=68c000000000000000000013 cantidad=1 stock=7.
-inventory-service-1   | 2026-10-28T23:43:55.487Z [INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 3ms rid=c35dca57-a883-4243-8135-364b11724888
 workorders-service-1  | 
-workorders-service-1  | 2026-10-28T23:43:58.633Z [INFO] [workorders-service] Escuchando en el puerto 3000 · Swagger en /api-docs · salud en /health · vehicles=http://vehicles-service:3000 (2000 ms) · inventory=http://inventory-service:3000 (5000 ms)
-workorders-service-1  | 2026-10-28T23:43:58.655Z [INFO] [workorders-service] MongoDB conectado en mongodb://workorders-db:27017/workorders (db=workorders)
-api-gateway-1         | 2026-10-28T23:43:45.172Z [INFO] [api-gateway] HTTP GET /api/ordenes?estado=FALLIDA → workorders-service 200 9ms rid=62fbcf85-4039-46c5-b86a-41a4a69092a1
-api-gateway-1         | 2026-10-28T23:43:52.837Z [INFO] [api-gateway] HTTP POST /api/repuestos/reiniciar → inventory-service 200 11ms rid=eaf67e34-8fb3-4cf6-ba4d-719ad27826b9
-api-gateway-1         | 2026-10-28T23:43:53.461Z [ERROR] [api-gateway] HTTP POST /api/ordenes → workorders-service 503 610ms rid=50ab02fe-9f5c-4b22-a437-613e05602dd9
-api-gateway-1         | 2026-10-28T23:43:55.488Z [INFO] [api-gateway] HTTP GET /api/repuestos/68c000000000000000000013 → inventory-service 200 5ms rid=c35dca57-a883-4243-8135-364b11724888
+workorders-service-1  | 2026-10-29T23:39:38.522Z [INFO] [workorders-service] Escuchando en el puerto 3000 · Swagger en /api-docs · salud en /health · vehicles=http://vehicles-service:3000 (2000 ms) · inventory=http://inventory-service:3000 (5000 ms)
+workorders-service-1  | 2026-10-29T23:39:38.540Z [INFO] [workorders-service] MongoDB conectado en mongodb://workorders-db:27017/workorders (db=workorders)
+inventory-service-1   | 2026-10-29T23:39:33.027Z [INFO] [inventory-service] POST /api/repuestos/reiniciar 200 8ms rid=fd55d310-2d6b-4eff-819d-203e81876bf0
+inventory-service-1   | 2026-10-29T23:39:33.121Z [INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 2ms rid=0bc1cf0c-68bf-4fcd-94a7-c83ba38ad2c2
+inventory-service-1   | 2026-10-29T23:39:34.160Z [INFO] [inventory-service] Stock descontado id=68c000000000000000000013 cantidad=1 stock=7.
+inventory-service-1   | 2026-10-29T23:39:35.691Z [INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 1ms rid=2bd03d97-c899-46dc-b87f-7769bd62767a
 
 
 $ docker compose logs --no-color inventory-service | grep -E 'WARN|ERROR' | tail -n 5
-inventory-service-1  | 2026-10-28T23:43:18.746Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
-inventory-service-1  | 2026-10-28T23:43:42.929Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
-inventory-service-1  | 2026-10-28T23:43:45.102Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar: Stock insuficiente. (Stock disponible de FIL-ACE-001: 0, solicitado: 1.)
-inventory-service-1  | 2026-10-28T23:43:45.104Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar 409 10ms rid=bb52b9dd-56e5-4b8d-bd4e-8be71669ab98
-inventory-service-1  | 2026-10-28T23:43:52.833Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
+inventory-service-1  | 2026-10-29T23:38:47.951Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
+inventory-service-1  | 2026-10-29T23:39:23.090Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
+inventory-service-1  | 2026-10-29T23:39:25.197Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar: Stock insuficiente. (Stock disponible de FIL-ACE-001: 0, solicitado: 1.)
+inventory-service-1  | 2026-10-29T23:39:25.198Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar 409 4ms rid=f24d4b11-3812-41b9-a1a3-829ac883ef79
+inventory-service-1  | 2026-10-29T23:39:33.025Z [WARN] [inventory-service] Stock de repuestos restaurado a la semilla.
 

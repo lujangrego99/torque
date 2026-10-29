@@ -4,29 +4,29 @@ docker compose config: OK
 
 
 $ docker compose up --build -d --wait 2>&1 | tail -n 12
- Container torque-redis-1  Waiting
- Container torque-api-gateway-1  Waiting
- Container torque-vehicles-service-1  Waiting
- Container torque-inventory-service-1  Waiting
- Container torque-vehicles-db-1  Healthy
- Container torque-redis-1  Healthy
- Container torque-inventory-db-1  Healthy
- Container torque-workorders-db-1  Healthy
- Container torque-inventory-service-1  Healthy
- Container torque-vehicles-service-1  Healthy
- Container torque-workorders-service-1  Healthy
- Container torque-api-gateway-1  Healthy
+ Container torque-workorders-db-1 Waiting 
+ Container torque-redis-1 Waiting 
+ Container torque-api-gateway-1 Waiting 
+ Container torque-vehicles-service-1 Waiting 
+ Container torque-workorders-db-1 Healthy 
+ Container torque-inventory-db-1 Healthy 
+ Container torque-redis-1 Healthy 
+ Container torque-vehicles-db-1 Healthy 
+ Container torque-inventory-service-1 Healthy 
+ Container torque-vehicles-service-1 Healthy 
+ Container torque-workorders-service-1 Healthy 
+ Container torque-api-gateway-1 Healthy 
 
 
 $ docker compose ps --format 'table {{.Service}}\t{{.Status}}\t{{.Ports}}'
 SERVICE              STATUS                    PORTS
-api-gateway          Up 6 seconds (healthy)    0.0.0.0:3000->3000/tcp, :::3000->3000/tcp, 0.0.0.0:3443->3443/tcp, :::3443->3443/tcp
-inventory-db         Up 15 seconds (healthy)   27017/tcp
-inventory-service    Up 7 seconds (healthy)    3000/tcp
-redis                Up 15 seconds (healthy)   6379/tcp
-vehicles-db          Up 15 seconds (healthy)   27017/tcp
+api-gateway          Up 6 seconds (healthy)    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp, 0.0.0.0:3443->3443/tcp, [::]:3443->3443/tcp
+inventory-db         Up 14 seconds (healthy)   27017/tcp
+inventory-service    Up 8 seconds (healthy)    3000/tcp
+redis                Up 14 seconds (healthy)   6379/tcp
+vehicles-db          Up 13 seconds (healthy)   27017/tcp
 vehicles-service     Up 7 seconds (healthy)    3000/tcp
-workorders-db        Up 15 seconds (healthy)   27017/tcp
+workorders-db        Up 14 seconds (healthy)   27017/tcp
 workorders-service   Up 6 seconds (healthy)    3000/tcp
 
 

@@ -1,17 +1,25 @@
 
 $ docker --version
-Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2
+Docker version 29.8.0, build 88096ef005
 
 
 $ docker compose version
-Docker Compose version v2.29.7
+Docker Compose version 5.5.1
 
 
 $ docker info --format 'Server {{.ServerVersion}} · {{.OperatingSystem}} · {{.NCPU}} CPU · cgroup {{.CgroupVersion}}'
-Server 29.1.3 · Ubuntu 24.04.3 LTS · 16 CPU · cgroup 2
+Server 29.8.0 · Omarchy · 12 CPU · cgroup 2
 
 
 $ docker run --rm hello-world | head -n 3
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+4f55086f7dd0: Pulling fs layer
+d5e71e642bf5: Download complete
+4f55086f7dd0: Download complete
+4f55086f7dd0: Pull complete
+Digest: sha256:c567b231f65614688711a75f31518a064258a51d442117a3e771a3a8fdba78ef
+Status: Downloaded newer image for hello-world:latest
 
 Hello from Docker!
 This message shows that your installation appears to be working correctly.

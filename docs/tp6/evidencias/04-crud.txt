@@ -1,19 +1,19 @@
 # Vehículos (vehicles-service vía gateway)
 
 $ curl -X GET http://localhost:3000/api/vehiculos
-[{"id":"68c000000000000000000001","marca":"Toyota","modelo":"Corolla","anio":2018,"patente":"AB123CD","kilometraje":95000},{"id":"68c000000000000000000002","marca":"Ford","modelo":"Ranger","anio":2021,"patente":"AC456EF","kilometraje":42000},{"id":"68c000000000000000000003","marca":"Volkswagen","modelo":"Gol","anio":2015,"patente":"AD789GH","kilometraje":130000},{"id":"6ae2877dd505c7edbd52436c","marca":"Peugeot","modelo":"208","anio":2023,"patente":"AF208PP","kilometraje":5000}]
+[{"id":"68c000000000000000000001","marca":"Toyota","modelo":"Corolla","anio":2018,"patente":"AB123CD","kilometraje":95000},{"id":"68c000000000000000000002","marca":"Ford","modelo":"Ranger","anio":2021,"patente":"AC456EF","kilometraje":42000},{"id":"68c000000000000000000003","marca":"Volkswagen","modelo":"Gol","anio":2015,"patente":"AD789GH","kilometraje":130000}]
 HTTP 200
 
 $ curl -X POST http://localhost:3000/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000}'
-{"id":"6ae28879bc3fa7a0e87dc320","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000}
+{"id":"6ae3d8ec88bc141622fbc53a","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000}
 HTTP 201
 
-$ curl -X GET http://localhost:3000/api/vehiculos/6ae28879bc3fa7a0e87dc320
-{"id":"6ae28879bc3fa7a0e87dc320","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000}
+$ curl -X GET http://localhost:3000/api/vehiculos/6ae3d8ec88bc141622fbc53a
+{"id":"6ae3d8ec88bc141622fbc53a","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000}
 HTTP 200
 
-$ curl -X PUT http://localhost:3000/api/vehiculos/6ae28879bc3fa7a0e87dc320 -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000}'
-{"id":"6ae28879bc3fa7a0e87dc320","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000}
+$ curl -X PUT http://localhost:3000/api/vehiculos/6ae3d8ec88bc141622fbc53a -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000}'
+{"id":"6ae3d8ec88bc141622fbc53a","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000}
 HTTP 200
 
 $ curl -X POST http://localhost:3000/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Uno","anio":2010,"patente":"AE111ZZ","kilometraje":1}'
@@ -28,7 +28,7 @@ $ curl -X GET http://localhost:3000/api/vehiculos/68c000000000000000000099
 {"error":"Vehículo no encontrado."}
 HTTP 404
 
-$ curl -X DELETE http://localhost:3000/api/vehiculos/6ae28879bc3fa7a0e87dc320
+$ curl -X DELETE http://localhost:3000/api/vehiculos/6ae3d8ec88bc141622fbc53a
 
 HTTP 204
 # Repuestos (inventory-service vía gateway) — lock Redis del TP2
