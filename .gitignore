@@ -32,3 +32,10 @@ Thumbs.db
 coverage/
 dist/
 build/
+
+# Certificados generados en cualquier carpeta certs/ (TP6: services/api-gateway/certs)
+**/certs/*.crt
+**/certs/*.cer
+**/certs/*.key
+**/certs/*.pfx
+**/certs/*.pem
