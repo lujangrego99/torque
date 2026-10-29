@@ -1,0 +1,29 @@
+# Ejecución local: mismo código, configuración distinta (variables de entorno).
+
+$ grep -h 'Escuchando\|escuchando\|Ruta interna\|MongoDB conectado\|Redis conectado' $LOGS/*.log | cut -c26-
+[INFO] [api-gateway] HTTP  escuchando en el puerto 3100 · Swagger en /api-docs
+[INFO] [api-gateway] Ruta interna vehicles-service → http://localhost:3101
+[INFO] [api-gateway] Ruta interna inventory-service → http://localhost:3102
+[INFO] [api-gateway] Ruta interna workorders-service → http://localhost:3103
+[INFO] [api-gateway] HTTPS escuchando en el puerto 3543 (certificado autofirmado)
+[INFO] [inventory-service] Escuchando en el puerto 3102 · Swagger en /api-docs · salud en /health · lock TTL=8000 ms · delay demo=500 ms
+[INFO] [inventory-service] MongoDB conectado en mongodb://127.0.0.1:27018/inventory (db=inventory)
+[INFO] [inventory-service] Redis conectado en redis://127.0.0.1:6380
+[INFO] [vehicles-service] Escuchando en el puerto 3101 · Swagger en /api-docs · salud en /health
+[INFO] [vehicles-service] MongoDB conectado en mongodb://127.0.0.1:27018/vehicles (db=vehicles)
+[INFO] [workorders-service] Escuchando en el puerto 3103 · Swagger en /api-docs · salud en /health · vehicles=http://localhost:3101 (2000 ms) · inventory=http://localhost:3102 (5000 ms)
+[INFO] [workorders-service] MongoDB conectado en mongodb://127.0.0.1:27018/workorders (db=workorders)
+
+
+$ curl -s http://localhost:3100/health/servicios
+{"service":"api-gateway","status":"ok","servicios":{"vehicles-service":{"httpStatus":200,"service":"vehicles-service","status":"ok","dependencias":{"mongo":"up"}},"inventory-service":{"httpStatus":200,"service":"inventory-service","status":"ok","dependencias":{"mongo":"up","redis":"up"}},"workorders-service":{"httpStatus":200,"service":"workorders-service","status":"ok","dependencias":{"mongo":"up"}}}}
+
+$ curl -s -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000001","descripcion":"Prueba local","repuestos":[{"repuestoId":"68c000000000000000000012","cantidad":1}]}' -w '\nHTTP %{http_code}'
+{"id":"6ae2884a8e261f78ea32030d","vehiculoId":"68c000000000000000000001","patente":"AB123CD","descripcion":"Prueba local","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001","nombre":"Pastillas de freno delanteras","cantidad":1,"estado":"DESCONTADO","detalle":"stock restante 3"}],"requiereCompensacion":false,"creadaEn":"2026-10-28T23:42:02.099Z","actualizadaEn":"2026-10-28T23:42:02.722Z"}
+HTTP 201
+
+$ grep -h 'POST /api/ordenes' $LOGS/*.log | cut -c26-
+[INFO] [api-gateway] HTTP POST /api/ordenes → workorders-service 201 944ms rid=da9638c8-d3d6-44ca-ae2a-c796c0ed6103
+[INFO] [workorders-service] POST /api/ordenes 201 880ms rid=da9638c8-d3d6-44ca-ae2a-c796c0ed6103
+
+# Comparar con docker-compose.yml: allí las mismas variables valen http://vehicles-service:3000, mongodb://vehicles-db:27017/vehicles, etc.

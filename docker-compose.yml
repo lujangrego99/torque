@@ -1,0 +1,179 @@
+# torque — TP6 · solución integrada.
+#   docker compose up --build        (levanta todo)
+#   docker compose down              (detiene; conserva los volúmenes)
+#   docker compose down -v           (detiene y BORRA los datos)
+#
+# Variables opcionales: copiar .env.example a .env (todas tienen valor por defecto).
+name: torque
+
+x-healthcheck-node: &healthcheck-node
+  # Usa Node (ya está en la imagen): no depende de curl/wget.
+  test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  interval: 10s
+  timeout: 3s
+  start_period: 15s
+  retries: 5
+
+x-healthcheck-mongo: &healthcheck-mongo
+  test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+  interval: 10s
+  timeout: 5s
+  start_period: 20s
+  retries: 5
+
+# Cache de WiredTiger acotada: son 3 instancias de laboratorio en la misma PC.
+x-mongo-command: &mongo-command ["mongod", "--quiet", "--wiredTigerCacheSizeGB", "0.25"]
+
+services:
+  # ---------------------------------------------------------------- borde
+  api-gateway:
+    build: ./services/api-gateway
+    image: torque/api-gateway:tp6
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HTTPS_PORT: 3443
+      SSL_KEY_PATH: /app/certs/server.key
+      SSL_CERT_PATH: /app/certs/server.crt
+      # Nombre DNS del servicio en Compose + puerto INTERNO (no el publicado).
+      VEHICLES_SERVICE_URL: http://vehicles-service:3000
+      INVENTORY_SERVICE_URL: http://inventory-service:3000
+      WORKORDERS_SERVICE_URL: http://workorders-service:3000
+      PROXY_TIMEOUT_MS: ${PROXY_TIMEOUT_MS:-15000}
+      HEALTH_TIMEOUT_MS: 2000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      # Único servicio publicado hacia la PC del desarrollador.
+      - "${GATEWAY_HTTP_PORT:-3000}:3000"
+      - "${GATEWAY_HTTPS_PORT:-3443}:3443"
+    volumes:
+      # Certificado autofirmado (TP2) fuera de la imagen. Si no existe, solo HTTP.
+      - ./services/api-gateway/certs:/app/certs:ro
+    healthcheck: *healthcheck-node
+    depends_on:
+      # service_started (no healthy): si un servicio está caído el gateway
+      # igual arranca y enruta a los demás; lo indisponible responde 503.
+      vehicles-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      workorders-service:
+        condition: service_started
+    networks: [edge, backend]
+
+  # ---------------------------------------------------------------- dominio
+  vehicles-service:
+    build: ./services/vehicles-service
+    image: torque/vehicles-service:tp6
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://vehicles-db:27017/vehicles
+      SEED_ON_START: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck: *healthcheck-node
+    depends_on:
+      vehicles-db:
+        condition: service_healthy
+    networks: [backend]
+
+  inventory-service:
+    build: ./services/inventory-service
+    image: torque/inventory-service:tp6
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://inventory-db:27017/inventory
+      REDIS_URL: redis://redis:6379
+      LOCK_TTL_MS: ${LOCK_TTL_MS:-8000}
+      DEMO_DELAY_MS: ${DEMO_DELAY_MS:-1000}
+      SEED_ON_START: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck: *healthcheck-node
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [backend]
+
+  workorders-service:
+    build: ./services/workorders-service
+    image: torque/workorders-service:tp6
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://workorders-db:27017/workorders
+      VEHICLES_SERVICE_URL: http://vehicles-service:3000
+      INVENTORY_SERVICE_URL: http://inventory-service:3000
+      VEHICLES_TIMEOUT_MS: ${VEHICLES_TIMEOUT_MS:-2000}
+      INVENTORY_TIMEOUT_MS: ${INVENTORY_TIMEOUT_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck: *healthcheck-node
+    depends_on:
+      workorders-db:
+        condition: service_healthy
+      # Dependencias remotas: solo orden de arranque. Si caen después, el
+      # servicio responde 503 controlado (no se cae con ellas).
+      vehicles-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+    networks: [backend]
+
+  # ---------------------------------------------------------------- datos
+  # Una instancia de MongoDB por servicio: ningún servicio puede ver la base
+  # de otro. Sin puertos publicados: solo se alcanzan dentro de `backend`.
+  vehicles-db:
+    image: mongo:7
+    restart: unless-stopped
+    command: *mongo-command
+    volumes:
+      - vehicles-data:/data/db
+    healthcheck: *healthcheck-mongo
+    networks: [backend]
+
+  inventory-db:
+    image: mongo:7
+    restart: unless-stopped
+    command: *mongo-command
+    volumes:
+      - inventory-data:/data/db
+    healthcheck: *healthcheck-mongo
+    networks: [backend]
+
+  workorders-db:
+    image: mongo:7
+    restart: unless-stopped
+    command: *mongo-command
+    volumes:
+      - workorders-data:/data/db
+    healthcheck: *healthcheck-mongo
+    networks: [backend]
+
+  # Coordinador del lock de stock (TP2). Sin volumen: los locks son efímeros
+  # por diseño (TTL), no hay nada que persistir.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [backend]
+
+networks:
+  # Borde: solo el gateway (es el único con puertos publicados).
+  edge:
+  # Servicios, bases y Redis. Nada de esta red publica puertos hacia el host:
+  # las bases y Redis solo se alcanzan por nombre DNS desde los servicios.
+  # (No se marca `internal: true`: en una red interna, el nombre de un servicio
+  # detenido no se resuelve y la consulta DNS se cuelga hasta el timeout del
+  # cliente, en vez de fallar enseguida con ENOTFOUND. Ver docs/tp6/README.)
+  backend:
+
+volumes:
+  vehicles-data:
+  inventory-data:
+  workorders-data:

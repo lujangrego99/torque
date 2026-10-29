@@ -1,0 +1,45 @@
+
+$ docker build -q -t torque/vehicles-service:tp6 ./services/vehicles-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+
+sha256:862c9d2dfcfa90371e3510640026e15d93943ad3cd677230fc5be8f2726398de
+
+
+$ docker build -q -t torque/inventory-service:tp6 ./services/inventory-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+
+sha256:bc208357b3b67a5317dda13f322a041785393ebf666bd2dc73e9773e110df359
+
+
+$ docker build -q -t torque/workorders-service:tp6 ./services/workorders-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+
+sha256:cb2c37a6c3e7c324f60041d4000bc5b289a1bdb9afd9f33d61dd425565d18fba
+
+
+$ docker build -q -t torque/api-gateway:tp6 ./services/api-gateway 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+
+sha256:b25e1e6c511dc6975b913c1c546099af608a7971e731910070a077f49605bb4f
+
+
+$ docker images 'torque/*' --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}'
+REPOSITORY:TAG                  SIZE
+torque/api-gateway:tp6          186MB
+torque/workorders-service:tp6   197MB
+torque/inventory-service:tp6    198MB
+torque/vehicles-service:tp6     197MB
+
+# Ejecución individual de una imagen, sin su base: el proceso arranca, responde /health 503 (degraded)
+# y reintenta la conexión en lugar de caerse.
+
+$ docker run -d --rm --name torque-solo -p 39001:3000 -e MONGODB_URI=mongodb://no-existe:27017/vehicles torque/vehicles-service:tp6
+9c77e4ea0e14d6e24b080f24afc4133d8c554d4b630d8de1db06385b7995a1e2
+
+
+$ curl -s -w '\nHTTP %{http_code}' http://localhost:39001/health
+{"service":"vehicles-service","status":"degraded","dependencias":{"mongo":"down"}}
+HTTP 503
+
+$ docker logs torque-solo 2>&1 | grep -E 'INFO|WARN|ERROR' | tail -n 4
+2026-10-28T23:42:26.433Z [WARN] [vehicles-service] MongoDB desconectado.
+2026-10-28T23:42:26.434Z [WARN] [vehicles-service] MongoDB no disponible (intento 1): getaddrinfo ENOTFOUND no-existe. Reintento en 3000 ms.
+2026-10-28T23:42:26.434Z [ERROR] [vehicles-service] MongoDB: getaddrinfo ENOTFOUND no-existe
+2026-10-28T23:42:28.357Z [ERROR] [vehicles-service] GET /health 503 1ms rid=ca39c18d-13d7-4cc5-a9d8-6eeeaeb034df
+
