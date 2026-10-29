@@ -1,0 +1,177 @@
+﻿Evidencia Docker TP6 - Jan Lahorca - 2026-10-29 19:15
+
+PS> wsl --status
+Distribución predeterminada: docker-desktop
+Versión predeterminada: 2
+WSL1 no es compatible con la configuración actual del equipo.
+Habilita el componente opcional "Subsistema de Windows para Linux" para usar WSL1.
+
+PS> docker --version
+Docker version 29.7.2, build a7dcaa6
+
+PS> docker compose version
+Docker Compose version v5.4.0
+
+PS> docker info (resumen)
+Server 29.7.2 - Docker Desktop - 12 CPU
+
+PS> docker run --rm hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+4f55086f7dd0: Pulling fs layer
+d5e71e642bf5: Download complete
+4f55086f7dd0: Download complete
+4f55086f7dd0: Pull complete
+Digest: sha256:c567b231f65614688711a75f31518a064258a51d442117a3e771a3a8fdba78ef
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+
+
+PS> docker build -t torque/inventory-service:tp6 ./services/inventory-service
+#0 building with "desktop-linux" instance using docker driver
+System.Management.Automation.RemoteException
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 630B 0.0s done
+#1 DONE 0.2s
+System.Management.Automation.RemoteException
+#2 [internal] load metadata for docker.io/library/node:22-alpine
+#2 DONE 4.5s
+System.Management.Automation.RemoteException
+#3 [internal] load .dockerignore
+#3 transferring context:
+#3 transferring context: 166B 0.0s done
+#3 DONE 0.2s
+System.Management.Automation.RemoteException
+#4 [internal] load build context
+#4 transferring context: 82.27kB 0.0s done
+#4 DONE 0.4s
+System.Management.Automation.RemoteException
+#5 [1/5] FROM docker.io/library/node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+#5 resolve docker.io/library/node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 0.1s done
+#5 DONE 0.7s
+System.Management.Automation.RemoteException
+#5 [1/5] FROM docker.io/library/node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+#5 sha256:304511616d6a6d472222f696b9045e20dc90e8043b2a8ba2acb61746595781f3 0B / 442B 0.2s
+#5 sha256:7246d4c6a55dd0f8dd00d2e63aece3a68d91e6a5d04c4e748fc2706897d96312 0B / 1.26MB 0.2s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 0B / 56.22MB 0.2s
+#5 sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 0B / 3.85MB 0.2s
+#5 sha256:304511616d6a6d472222f696b9045e20dc90e8043b2a8ba2acb61746595781f3 442B / 442B 0.3s done
+#5 sha256:7246d4c6a55dd0f8dd00d2e63aece3a68d91e6a5d04c4e748fc2706897d96312 1.26MB / 1.26MB 0.7s done
+#5 sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 1.05MB / 3.85MB 1.5s
+#5 sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 2.10MB / 3.85MB 2.3s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 3.15MB / 56.22MB 2.6s
+#5 sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 3.15MB / 3.85MB 2.9s
+#5 sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 3.85MB / 3.85MB 3.4s done
+#5 extracting sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788
+#5 extracting sha256:7b229517ed222597277036d94892173207d01a731ab3a88eeb1de2e963a2c788 0.4s done
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 6.29MB / 56.22MB 4.1s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 9.44MB / 56.22MB 5.1s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 12.58MB / 56.22MB 6.2s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 15.73MB / 56.22MB 7.5s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 18.87MB / 56.22MB 8.5s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 22.02MB / 56.22MB 9.4s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 25.17MB / 56.22MB 10.2s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 28.31MB / 56.22MB 10.9s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 31.46MB / 56.22MB 11.7s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 34.60MB / 56.22MB 12.6s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 37.75MB / 56.22MB 13.2s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 40.89MB / 56.22MB 14.2s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 44.04MB / 56.22MB 15.0s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 47.19MB / 56.22MB 16.0s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 50.33MB / 56.22MB 16.9s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 53.48MB / 56.22MB 17.8s
+#5 sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 56.22MB / 56.22MB 18.8s done
+#5 extracting sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1
+#5 extracting sha256:8776aa3d2ba7247a375d06dcec03856b99dbb0e16e904a5672d3bf08c852d4f1 2.9s done
+#5 DONE 22.5s
+System.Management.Automation.RemoteException
+#5 [1/5] FROM docker.io/library/node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+#5 extracting sha256:7246d4c6a55dd0f8dd00d2e63aece3a68d91e6a5d04c4e748fc2706897d96312 0.1s done
+#5 DONE 22.6s
+System.Management.Automation.RemoteException
+#5 [1/5] FROM docker.io/library/node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+#5 extracting sha256:304511616d6a6d472222f696b9045e20dc90e8043b2a8ba2acb61746595781f3 0.1s done
+#5 DONE 22.7s
+System.Management.Automation.RemoteException
+#6 [2/5] WORKDIR /app
+#6 DONE 1.7s
+System.Management.Automation.RemoteException
+#7 [3/5] COPY package*.json ./
+#7 DONE 0.5s
+System.Management.Automation.RemoteException
+#8 [4/5] RUN npm ci --omit=dev && npm cache clean --force
+#8 7.537 
+#8 7.537 added 129 packages, and audited 130 packages in 7s
+#8 7.537 
+#8 7.537 20 packages are looking for funding
+#8 7.537   run `npm fund` for details
+#8 7.538 
+#8 7.538 found 0 vulnerabilities
+#8 7.540 npm notice
+#8 7.540 npm notice New major version of npm available! 10.9.9 -> 12.2.1
+#8 7.540 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#8 7.540 npm notice To update run: npm install -g npm@12.2.1
+#8 7.540 npm notice
+#8 7.762 npm warn using --force Recommended protections disabled.
+#8 DONE 8.4s
+System.Management.Automation.RemoteException
+#9 [5/5] COPY src ./src
+#9 DONE 0.2s
+System.Management.Automation.RemoteException
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 1.9s done
+#10 exporting manifest sha256:79e8a3688ca1cb233aefa3b632c950bd77d0ae5580f450a895b716314ca6df9c 0.1s done
+#10 exporting config sha256:666a2d56e9a591ed172e3d4872f7cbdea979ca16ab0f563c9f2792672f45b526 0.1s done
+#10 exporting attestation manifest sha256:5ae2b1eff2ad9e7d7317975e4e4adfb4e6d63f38c55dfe6c2ff67dab2ef6da8b 0.1s done
+#10 exporting manifest list sha256:6e2d7c09dfbbba1caafefdf53c15d549a0bf068b7b52b1973f36e48cd4f0cf46
+#10 exporting manifest list sha256:6e2d7c09dfbbba1caafefdf53c15d549a0bf068b7b52b1973f36e48cd4f0cf46 0.1s done
+#10 naming to docker.io/torque/inventory-service:tp6 done
+#10 unpacking to docker.io/torque/inventory-service:tp6
+#10 unpacking to docker.io/torque/inventory-service:tp6 1.7s done
+#10 DONE 4.0s
+
+PS> docker images torque/inventory-service
+IMAGE                          ID             DISK USAGE   CONTENT SIZE   EXTRA
+torque/inventory-service:tp6   6e2d7c09dfbb        289MB         68.9MB        
+
+PS> docker run -d --rm --name prueba-inventory-service -p 39002:3000 torque/inventory-service:tp6
+768ababb7889eb3f14625643cab7e79854fe00ccb6d8a603e17acba559032a51
+
+PS> curl http://localhost:39002/health
+{"service":"inventory-service","status":"degraded","dependencias":{"mongo":"down","redis":"down"}}
+HTTP 503
+
+PS> docker logs prueba-inventory-service
+
+2026-10-29T22:16:57.070Z [ERROR] [inventory-service] Redis no disponible (redis://127.0.0.1:6379): connect ECONNREFUSED 127.0.0.1:6379
+> inventory-service@1.0.0 start
+> node src/index.js
+
+2026-10-29T22:16:57.057Z [INFO] [inventory-service] Escuchando en el puerto 3000 · Swagger en /api-docs · salud en /health · lock TTL=8000 ms · delay demo=0 ms
+2026-10-29T22:17:02.057Z [WARN] [inventory-service] MongoDB desconectado.
+2026-10-29T22:17:02.057Z [WARN] [inventory-service] MongoDB no disponible (intento 1): connect ECONNREFUSED 127.0.0.1:27017. Reintento en 3000 ms.
+2026-10-29T22:17:00.862Z [ERROR] [inventory-service] GET /health 503 6ms rid=baf89d56-4d12-4264-bb19-eaa24cd4e945
+2026-10-29T22:17:02.058Z [ERROR] [inventory-service] MongoDB: connect ECONNREFUSED 127.0.0.1:27017
+2026-10-29T22:17:05.847Z [ERROR] [inventory-service] GET /health 503 2ms rid=4f385ba2-3a1e-4718-871a-a479820de419
