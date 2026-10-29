@@ -1,0 +1,21 @@
+{
+  "name": "vehicles-service",
+  "version": "1.0.0",
+  "description": "torque · vehicles-service — parque de vehículos del taller (TP6 Programación Distribuida, UCH)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "mongoose": "^8.18.0",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.17.0"
+  }
+}
