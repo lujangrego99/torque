@@ -36,5 +36,5 @@ WORKORDERS_SERVICE_URL=http://workorders-service:3000
 # La orden guarda solo referencias lógicas (ids) + copia de patente/código:
 
 $ docker compose exec -T workorders-db mongosh --quiet workorders --eval 'JSON.stringify(db.ordenes.findOne({}, {vehiculoId:1, patente:1, "items.repuestoId":1, "items.codigo":1, estado:1}))'
-{"_id":"6ae286e01d2c3309a21a81e3","vehiculoId":"68c000000000000000000001","patente":"AB123CD","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001"}]}
+{"_id":"6ae3d8f005ee4c52ea80e778","vehiculoId":"68c000000000000000000001","patente":"AB123CD","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001"}]}
 

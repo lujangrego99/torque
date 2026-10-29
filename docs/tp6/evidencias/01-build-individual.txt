@@ -1,36 +1,32 @@
 
 $ docker build -q -t torque/vehicles-service:tp6 ./services/vehicles-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
-
-sha256:862c9d2dfcfa90371e3510640026e15d93943ad3cd677230fc5be8f2726398de
+sha256:ba3da705ba2dfb63cdee5412f89addb06aab7d9e2456de4a7ace5543e8a7b71b
 
 
 $ docker build -q -t torque/inventory-service:tp6 ./services/inventory-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
-
-sha256:bc208357b3b67a5317dda13f322a041785393ebf666bd2dc73e9773e110df359
+sha256:55c058ad45f9aa7c7e3c8217c4c20af8845382399198d05a0340b6d6db1d3ca7
 
 
 $ docker build -q -t torque/workorders-service:tp6 ./services/workorders-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
-
-sha256:cb2c37a6c3e7c324f60041d4000bc5b289a1bdb9afd9f33d61dd425565d18fba
+sha256:cedde6f8ac819c9333e296740534d8e27a1dcffb5a4335db15cc3850eb170bef
 
 
 $ docker build -q -t torque/api-gateway:tp6 ./services/api-gateway 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
-
-sha256:b25e1e6c511dc6975b913c1c546099af608a7971e731910070a077f49605bb4f
+sha256:23b64cbbde3c7697d706d192b427ef20eed5f5543b0bd6eeb50185010fb483e5
 
 
 $ docker images 'torque/*' --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}'
 REPOSITORY:TAG                  SIZE
-torque/api-gateway:tp6          186MB
-torque/workorders-service:tp6   197MB
-torque/inventory-service:tp6    198MB
-torque/vehicles-service:tp6     197MB
+torque/api-gateway:tp6          265MB
+torque/workorders-service:tp6   281MB
+torque/inventory-service:tp6    286MB
+torque/vehicles-service:tp6     281MB
 
 # Ejecución individual de una imagen, sin su base: el proceso arranca, responde /health 503 (degraded)
 # y reintenta la conexión en lugar de caerse.
 
 $ docker run -d --rm --name torque-solo -p 39001:3000 -e MONGODB_URI=mongodb://no-existe:27017/vehicles torque/vehicles-service:tp6
-9c77e4ea0e14d6e24b080f24afc4133d8c554d4b630d8de1db06385b7995a1e2
+6802d9882ab5ca3999654cbc21a82f03337418dfa2ea4383e9f33898d3dc09c7
 
 
 $ curl -s -w '\nHTTP %{http_code}' http://localhost:39001/health
@@ -38,8 +34,8 @@ $ curl -s -w '\nHTTP %{http_code}' http://localhost:39001/health
 HTTP 503
 
 $ docker logs torque-solo 2>&1 | grep -E 'INFO|WARN|ERROR' | tail -n 4
-2026-10-28T23:42:26.433Z [WARN] [vehicles-service] MongoDB desconectado.
-2026-10-28T23:42:26.434Z [WARN] [vehicles-service] MongoDB no disponible (intento 1): getaddrinfo ENOTFOUND no-existe. Reintento en 3000 ms.
-2026-10-28T23:42:26.434Z [ERROR] [vehicles-service] MongoDB: getaddrinfo ENOTFOUND no-existe
-2026-10-28T23:42:28.357Z [ERROR] [vehicles-service] GET /health 503 1ms rid=ca39c18d-13d7-4cc5-a9d8-6eeeaeb034df
+2026-10-29T23:37:37.821Z [WARN] [vehicles-service] MongoDB desconectado.
+2026-10-29T23:37:37.822Z [WARN] [vehicles-service] MongoDB no disponible (intento 1): Server selection timed out after 5000 ms. Reintento en 3000 ms.
+2026-10-29T23:37:37.822Z [ERROR] [vehicles-service] MongoDB: Server selection timed out after 5000 ms
+2026-10-29T23:37:39.678Z [ERROR] [vehicles-service] GET /health 503 2ms rid=da2dc39f-06b2-4595-838f-9b25c9711896
 
