@@ -7,8 +7,18 @@ function entero(valor, porDefecto) {
   return Number.isInteger(n) && n > 0 ? n : porDefecto;
 }
 
+const serviceName = process.env.SERVICE_NAME || "inventory-service";
+
+// Clave para VERIFICAR los access tokens (HS256) que emite auth-service. Es el
+// mismo secreto que usa auth-service para firmar; sin él el servicio no arranca.
+const jwtSecret = process.env.JWT_SECRET || "";
+if (jwtSecret.length < 32) {
+  console.error(`[${serviceName}] JWT_SECRET falta o tiene menos de 32 caracteres. Ver .env.example.`);
+  process.exit(1);
+}
+
 module.exports = {
-  serviceName: process.env.SERVICE_NAME || "inventory-service",
+  serviceName,
   port: entero(process.env.PORT, 3002),
   mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/inventory",
   mongoRetryMs: entero(process.env.MONGO_RETRY_MS, 3000),
@@ -19,5 +29,10 @@ module.exports = {
   // Retardo artificial dentro de la sección crítica para ver la carrera (TP2).
   demoDelayMs: entero(process.env.DEMO_DELAY_MS, 0),
   seedOnStart: process.env.SEED_ON_START !== "false",
+  jwt: {
+    secret: jwtSecret,
+    issuer: process.env.JWT_ISSUER || "torque-auth",
+    audience: process.env.JWT_AUDIENCE || "torque",
+  },
   logLevel: process.env.LOG_LEVEL || "info",
 };
