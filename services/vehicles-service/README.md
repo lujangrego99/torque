@@ -4,6 +4,8 @@ Parque de vehículos del taller. Es el **único dueño** de la colección
 `vehiculos` (base MongoDB `vehicles`) y de la regla de **patente única**.
 TP6 · torque · responsable: Manuel Moya.
 
+TP7 (JWT + roles) · responsable: Manuel Moya.
+
 ## Endpoints
 
 | Método | Ruta | Respuestas |
@@ -19,12 +21,28 @@ TP6 · torque · responsable: Manuel Moya.
 `workorders-service` usa `GET /api/vehiculos/:id` para validar la referencia de
 una orden (contrato público, nunca la base).
 
+## Seguridad (TP7)
+
+Todo `/api/vehiculos` requiere `Authorization: Bearer <token>` (emitido por
+auth-service). El token se verifica **localmente** (`src/middleware/auth.js`:
+HS256, `iss`, `aud`, `exp`), sin consultar ninguna base de usuarios.
+
+| Endpoint | MECANICO | ADMIN | Sin token / token inválido |
+|---|---|---|---|
+| `GET /api/vehiculos` · `GET /:id` | ✔ | ✔ | 401 |
+| `POST /api/vehiculos` · `PUT /:id` | ✔ | ✔ | 401 |
+| `DELETE /api/vehiculos/:id` | **403** | ✔ | 401 |
+
+`/health` y `/api-docs` siguen públicos. Detalle de 401 vs 403:
+[docs/tp7/errores-401-403.md](../../docs/tp7/errores-401-403.md).
+
 ## Estructura
 
 ```
 src/
   index.js              arranque: abre el puerto, conecta Mongo con reintentos, índices y seed
   app.js                Express: request id, log por request, /health, Swagger, manejo de errores
+  middleware/auth.js    validación del JWT (401) y autorización por rol (403)
   routes/vehiculos.js   rutas → controladores
   controllers/          adapta HTTP ↔ caso de uso
   services/vehiculos.js reglas de negocio (validación, patente única, 404)
@@ -42,6 +60,8 @@ src/
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/vehicles` | `mongodb://vehicles-db:27017/vehicles` | base propia |
 | `MONGO_RETRY_MS` | `3000` | `3000` | espera entre reintentos de conexión |
 | `SEED_ON_START` | `true` | `true` | carga 3 vehículos si la colección está vacía |
+| `JWT_SECRET` | (≥ 32 caracteres) | `${JWT_SECRET}` del `.env` raíz | clave HS256 para **verificar** tokens (la misma que auth-service). Sin ella no arranca |
+| `JWT_ISSUER` · `JWT_AUDIENCE` | `torque-auth` · `torque` | ídem | emisor y audiencia esperados |
 | `LOG_LEVEL` | `info` | `info` | nivel de Winston |
 
 Ver `.env.example`. El `.env` real no se versiona.
