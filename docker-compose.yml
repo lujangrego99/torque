@@ -1,10 +1,19 @@
-# torque — TP6 · solución integrada.
+# torque — TP7 · solución integrada con autenticación JWT.
+#   bash scripts/generar-env.sh      (una sola vez: crea .env con secretos aleatorios)
 #   docker compose up --build        (levanta todo)
 #   docker compose down              (detiene; conserva los volúmenes)
 #   docker compose down -v           (detiene y BORRA los datos)
 #
-# Variables opcionales: copiar .env.example a .env (todas tienen valor por defecto).
+# JWT_SECRET y ADMIN_PASSWORD son OBLIGATORIAS y salen de .env (no versionado):
+# sin ellas Compose no arranca. El resto tiene valor por defecto (.env.example).
 name: torque
+
+# Verificación del JWT (HS256): el mismo secreto en quien firma (auth-service) y
+# en quienes validan. Se comparte por variable de entorno, nunca en el código.
+x-jwt-env: &jwt-env
+  JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env (correr bash scripts/generar-env.sh)}
+  JWT_ISSUER: torque-auth
+  JWT_AUDIENCE: torque
 
 x-healthcheck-node: &healthcheck-node
   # Usa Node (ya está en la imagen): no depende de curl/wget.
@@ -21,14 +30,14 @@ x-healthcheck-mongo: &healthcheck-mongo
   start_period: 20s
   retries: 5
 
-# Cache de WiredTiger acotada: son 3 instancias de laboratorio en la misma PC.
+# Cache de WiredTiger acotada: son 4 instancias de laboratorio en la misma PC.
 x-mongo-command: &mongo-command ["mongod", "--quiet", "--wiredTigerCacheSizeGB", "0.25"]
 
 services:
   # ---------------------------------------------------------------- borde
   api-gateway:
     build: ./services/api-gateway
-    image: torque/api-gateway:tp6
+    image: torque/api-gateway:tp7
     restart: unless-stopped
     environment:
       PORT: 3000
@@ -39,6 +48,7 @@ services:
       VEHICLES_SERVICE_URL: http://vehicles-service:3000
       INVENTORY_SERVICE_URL: http://inventory-service:3000
       WORKORDERS_SERVICE_URL: http://workorders-service:3000
+      AUTH_SERVICE_URL: http://auth-service:3000
       PROXY_TIMEOUT_MS: ${PROXY_TIMEOUT_MS:-15000}
       HEALTH_TIMEOUT_MS: 2000
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -59,14 +69,40 @@ services:
         condition: service_started
       workorders-service:
         condition: service_started
+      auth-service:
+        condition: service_started
     networks: [edge, backend]
+
+  # ---------------------------------------------------------------- identidad
+  # Única autoridad sobre usuarios y credenciales: emite los JWT. Los demás
+  # servicios validan el token con el secreto compartido, sin consultar esta base.
+  auth-service:
+    build: ./services/auth-service
+    image: torque/auth-service:tp7
+    restart: unless-stopped
+    environment:
+      <<: *jwt-env
+      PORT: 3000
+      MONGODB_URI: mongodb://auth-db:27017/auth
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@torque.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Falta ADMIN_PASSWORD en .env (correr bash scripts/generar-env.sh)}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck: *healthcheck-node
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks: [backend]
 
   # ---------------------------------------------------------------- dominio
   vehicles-service:
     build: ./services/vehicles-service
-    image: torque/vehicles-service:tp6
+    image: torque/vehicles-service:tp7
     restart: unless-stopped
     environment:
+      <<: *jwt-env
       PORT: 3000
       MONGODB_URI: mongodb://vehicles-db:27017/vehicles
       SEED_ON_START: "true"
@@ -79,9 +115,10 @@ services:
 
   inventory-service:
     build: ./services/inventory-service
-    image: torque/inventory-service:tp6
+    image: torque/inventory-service:tp7
     restart: unless-stopped
     environment:
+      <<: *jwt-env
       PORT: 3000
       MONGODB_URI: mongodb://inventory-db:27017/inventory
       REDIS_URL: redis://redis:6379
@@ -99,9 +136,10 @@ services:
 
   workorders-service:
     build: ./services/workorders-service
-    image: torque/workorders-service:tp6
+    image: torque/workorders-service:tp7
     restart: unless-stopped
     environment:
+      <<: *jwt-env
       PORT: 3000
       MONGODB_URI: mongodb://workorders-db:27017/workorders
       VEHICLES_SERVICE_URL: http://vehicles-service:3000
@@ -151,6 +189,16 @@ services:
     healthcheck: *healthcheck-mongo
     networks: [backend]
 
+  # Usuarios y hashes bcrypt. Solo auth-service tiene esta URI.
+  auth-db:
+    image: mongo:7
+    restart: unless-stopped
+    command: *mongo-command
+    volumes:
+      - auth-data:/data/db
+    healthcheck: *healthcheck-mongo
+    networks: [backend]
+
   # Coordinador del lock de stock (TP2). Sin volumen: los locks son efímeros
   # por diseño (TTL), no hay nada que persistir.
   redis:
@@ -177,3 +225,4 @@ volumes:
   vehicles-data:
   inventory-data:
   workorders-data:
+  auth-data:
