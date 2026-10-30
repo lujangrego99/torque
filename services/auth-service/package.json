@@ -1,0 +1,23 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "description": "torque · auth-service — identidad, credenciales y emisión de JWT (TP7 Programación Distribuida, UCH)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.18.0",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.17.0"
+  }
+}
