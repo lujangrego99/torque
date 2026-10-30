@@ -22,7 +22,8 @@ function causaDeRed(err) {
 }
 
 // Cliente HTTP mínimo sobre fetch nativo (Node ≥ 18). Encapsula URL base,
-// timeout, propagación del request id y clasificación de errores, para que
+// timeout, propagación del request id y del access token del usuario, y
+// clasificación de errores, para que
 // ni los controladores ni los servicios conozcan esos detalles.
 //
 // - Respuesta 2xx/4xx  → { status, body }  (los 4xx son errores funcionales: decide el negocio)
@@ -30,7 +31,7 @@ function causaDeRed(err) {
 // - Otra 5xx           → ErrorDependencia(error_remoto)
 // - Sin respuesta      → ErrorDependencia(timeout | dns | conexion_rechazada | red)
 function crearCliente({ servicio, baseUrl, timeoutMs }) {
-  async function request(metodo, ruta, { body, requestId } = {}) {
+  async function request(metodo, ruta, { body, requestId, token } = {}) {
     const url = `${baseUrl.replace(/\/$/, "")}${ruta}`;
     const inicio = Date.now();
     let respuesta;
@@ -42,6 +43,8 @@ function crearCliente({ servicio, baseUrl, timeoutMs }) {
           accept: "application/json",
           ...(body !== undefined ? { "content-type": "application/json" } : {}),
           ...(requestId ? { "x-request-id": requestId } : {}),
+          // Propagación de identidad (TP7): el servicio destino valida el mismo token.
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(timeoutMs),
