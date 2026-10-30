@@ -6,12 +6,12 @@ $ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.delete
 
 
 $ pedir '' POST /api/auth/register '{"email":"mecanico1@torque.local","nombre":"Mecanico Uno","password":"clave-de-prueba-1"}'
-{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}
+{"id":"6ae4a46ac86ef45be0af9e34","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.230Z"}
 HTTP 201
 
 
 $ pedir '' POST /api/auth/register '{"email":"mecanico2@torque.local","nombre":"Mecanico Dos","password":"clave-de-prueba-1"}'
-{"id":"6ae3dffd1ad170185e5ac8ce","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.729Z"}
+{"id":"6ae4a46ac86ef45be0af9e37","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.604Z"}
 HTTP 201
 
 # Datos inválidos → 400 controlado

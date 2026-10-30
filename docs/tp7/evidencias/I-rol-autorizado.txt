@@ -1,7 +1,7 @@
 # MECANICO: alta de vehículo (MECANICO, ADMIN) → 201
 
 $ pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000}"
-{"id":"6ae3e018552fe402c9d3c014","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000}
+{"id":"6ae4a48412d5f8e814efb425","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000}
 HTTP 201
 
 # ADMIN: baja del vehículo (solo ADMIN) → 204
@@ -19,16 +19,16 @@ HTTP 200
 # ADMIN: administración de usuarios → 200 (sin hashes en la respuesta)
 
 $ pedir "$T_ADMIN" GET /api/auth/usuarios
-[{"id":"6ae3dff71ad170185e5ac8c8","email":"admin@torque.local","nombre":"Administrador","rol":"ADMIN","activo":true,"creadoEn":"2026-10-30T00:08:23.432Z"},{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"},{"id":"6ae3dffd1ad170185e5ac8ce","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.729Z"}]
+[{"id":"6ae4a464c86ef45be0af9e31","email":"admin@torque.local","nombre":"Administrador","rol":"ADMIN","activo":true,"creadoEn":"2026-10-30T14:06:28.444Z"},{"id":"6ae4a46ac86ef45be0af9e34","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.230Z"},{"id":"6ae4a46ac86ef45be0af9e37","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.604Z"}]
 HTTP 200
 
 # ADMIN ve las órdenes de todos; MECANICO 1 ve la suya
 
 $ pedir "$T_MEC1" GET /api/ordenes/$ORDEN | grep -E "creadaPor|HTTP" | head -c 200; echo
-{"id":"6ae3e0192d9b5ba6795be3d1","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6ae3dffd1ad170185e5ac8cb","descripcion":"Orden propia","estado":"CONFIRMADA","items":[],"requi
+{"id":"6ae4a48433238e22784aac47","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6ae4a46ac86ef45be0af9e34","descripcion":"Orden propia","estado":"CONFIRMADA","items":[],"requi
 
 
 $ pedir "$T_ADMIN" GET /api/ordenes/$ORDEN | grep -oE "\"creadaPor\":\"[a-f0-9]+\"|HTTP [0-9]+"
-"creadaPor":"6ae3dffd1ad170185e5ac8cb"
+"creadaPor":"6ae4a46ac86ef45be0af9e34"
 HTTP 200
 

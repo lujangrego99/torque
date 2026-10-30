@@ -2,24 +2,24 @@
 # workorders reenvía el MISMO token del usuario; vehicles e inventory lo validan cada uno por su cuenta.
 
 $ pedir "$T_MEC1" POST /api/ordenes "{\"vehiculoId\":\"$VEH_COROLLA\",\"descripcion\":\"Cambio de bujías\",\"repuestos\":[{\"repuestoId\":\"$REP_BUJIAS\",\"cantidad\":1}]}"
-{"id":"6ae3e0192d9b5ba6795be3d6","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6ae3dffd1ad170185e5ac8cb","descripcion":"Cambio de bujías","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":1,"estado":"DESCONTADO","detalle":"stock restante 7"}],"requiereCompensacion":false,"creadaEn":"2026-10-30T00:08:57.734Z","actualizadaEn":"2026-10-30T00:08:58.780Z"}
+{"id":"6ae4a48533238e22784aac4c","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6ae4a46ac86ef45be0af9e34","descripcion":"Cambio de bujías","estado":"CONFIRMADA","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":1,"estado":"DESCONTADO","detalle":"stock restante 7"}],"requiereCompensacion":false,"creadaEn":"2026-10-30T14:07:01.261Z","actualizadaEn":"2026-10-30T14:07:02.301Z"}
 HTTP 201
 
 # Mismo request id en los 4 servicios; inventory aceptó el descuento con la identidad propagada:
 
-$ docker compose logs --no-color --since 30s | grep 'ac2548dc-2eed-44c3-b016-d018ac014ad0' | cut -d'|' -f2- | cut -c27-
-[INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 3ms rid=ac2548dc-2eed-44c3-b016-d018ac014ad0
-[INFO] [workorders-service] Orden 6ae3e0192d9b5ba6795be3d6 registrada PENDIENTE (vehículo AB123CD, 1 repuestos, sub=6ae3dffd1ad170185e5ac8cb) rid=ac2548dc-2eed-44c3-b016-d018ac014ad0.
-[INFO] [workorders-service] Orden 6ae3e0192d9b5ba6795be3d6 CONFIRMADA rid=ac2548dc-2eed-44c3-b016-d018ac014ad0.
-[INFO] [workorders-service] POST /api/ordenes 201 1081ms rid=ac2548dc-2eed-44c3-b016-d018ac014ad0
-[INFO] [api-gateway] HTTP POST /api/ordenes → workorders-service 201 1087ms rid=ac2548dc-2eed-44c3-b016-d018ac014ad0
-[INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 6ms rid=ac2548dc-2eed-44c3-b016-d018ac014ad0
-[INFO] [inventory-service] POST /api/repuestos/68c000000000000000000013/descontar 200 1019ms rid=ac2548dc-2eed-44c3-b016-d018ac014ad0
+$ docker compose logs --no-color --since 30s | grep '6dd601fa-ca18-460b-93dc-ca52f0a593e5' | cut -d'|' -f2- | cut -c27-
+[INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 2ms rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5
+[INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 4ms rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5
+[INFO] [inventory-service] POST /api/repuestos/68c000000000000000000013/descontar 200 1014ms rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5
+[INFO] [workorders-service] Orden 6ae4a48533238e22784aac4c registrada PENDIENTE (vehículo AB123CD, 1 repuestos, sub=6ae4a46ac86ef45be0af9e34) rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5.
+[INFO] [workorders-service] Orden 6ae4a48533238e22784aac4c CONFIRMADA rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5.
+[INFO] [workorders-service] POST /api/ordenes 201 1058ms rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5
+[INFO] [api-gateway] HTTP POST /api/ordenes → workorders-service 201 1060ms rid=6dd601fa-ca18-460b-93dc-ca52f0a593e5
 
 # La orden queda a nombre del sub del token (creadaPor):
 
 $ decodificar "$T_MEC1" | grep payload
-payload: {"rol":"MECANICO","iat":1793318937,"exp":1793319837,"aud":"torque","iss":"torque-auth","sub":"6ae3dffd1ad170185e5ac8cb"}
+payload: {"rol":"MECANICO","iat":1793369221,"exp":1793370121,"aud":"torque","iss":"torque-auth","sub":"6ae4a46ac86ef45be0af9e34"}
 
 # Sin identidad, el descuento se rechaza también DENTRO de la red backend (no se confía en el gateway):
 

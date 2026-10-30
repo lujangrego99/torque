@@ -1,12 +1,12 @@
 # docker compose down (SIN -v) + up: contenedores nuevos, volumen auth-data intacto
 
 $ docker compose ps -q auth-service | cut -c1-12
-6f1e6700027d
+dbec51616faf
 
 
 $ docker compose down 2>&1 | tail -n 2
- Network torque_edge Removed 
  Network torque_backend Removed 
+ Network torque_edge Removed 
 
 
 $ docker compose up -d --wait 2>&1 | tail -n 2
@@ -15,17 +15,17 @@ $ docker compose up -d --wait 2>&1 | tail -n 2
 
 
 $ docker compose ps -q auth-service | cut -c1-12
-74ab0bd8db24
+bb06832fc9b9
 
 # El usuario registrado antes sigue existiendo y vuelve a autenticarse:
 
 $ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local","password":"clave-de-prueba-1"}'
-{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"usuario":{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}}
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"usuario":{"id":"6ae4a46ac86ef45be0af9e34","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.230Z"}}
 HTTP 200
 
 
 $ pedir "$T_MEC1" GET /api/auth/me
-{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}
+{"id":"6ae4a46ac86ef45be0af9e34","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T14:06:34.230Z"}
 HTTP 200
 
 

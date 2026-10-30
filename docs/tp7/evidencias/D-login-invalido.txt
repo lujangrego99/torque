@@ -18,8 +18,8 @@ HTTP 400
 # Log interno: motivo técnico, email enmascarado, nunca la contraseña
 
 $ docker compose logs --no-color --since 30s auth-service | grep -E 'Login' | cut -d'|' -f2- | tail -n 4
- 2026-10-30T00:08:30.851Z [INFO] [auth-service] Login OK sub=6ae3dffd1ad170185e5ac8cb rol=MECANICO vence=2026-10-30T00:23:30.000Z rid=15425b40-7c48-4d5b-9cf7-2c2e845ab059
- 2026-10-30T00:08:31.367Z [INFO] [auth-service] Login OK sub=6ae3dff71ad170185e5ac8c8 rol=ADMIN vence=2026-10-30T00:23:31.000Z rid=265bdd30-bd01-4bff-95cd-7b787f5ac8a6
- 2026-10-30T00:08:31.870Z [WARN] [auth-service] Login fallido email=me***@torque.local motivo=password_incorrecta rid=db65f99d-33ad-4c81-a896-60201d3a632f
- 2026-10-30T00:08:32.287Z [WARN] [auth-service] Login fallido email=na***@torque.local motivo=usuario_inexistente rid=130aa6fb-ff29-45b5-92ab-abcca8ebc716
+ 2026-10-30T14:06:35.541Z [INFO] [auth-service] Login OK sub=6ae4a46ac86ef45be0af9e34 rol=MECANICO vence=2026-10-30T14:21:35.000Z rid=c9a335ae-384f-4698-9758-d612837e3830
+ 2026-10-30T14:06:35.981Z [INFO] [auth-service] Login OK sub=6ae4a464c86ef45be0af9e31 rol=ADMIN vence=2026-10-30T14:21:35.000Z rid=ae3ab497-f472-48f2-9888-22b012988f28
+ 2026-10-30T14:06:36.463Z [WARN] [auth-service] Login fallido email=me***@torque.local motivo=password_incorrecta rid=78eb3f61-13c8-49de-baa2-ab2e17a42326
+ 2026-10-30T14:06:36.875Z [WARN] [auth-service] Login fallido email=na***@torque.local motivo=usuario_inexistente rid=8b3569d5-2621-443e-b657-efc9bd400ec0
 
