@@ -4,6 +4,8 @@ Stock de repuestos y descuento sin corrupción concurrente. Es el **único dueñ
 de la colección `repuestos` (base MongoDB `inventory`) y de los locks
 `lock:repuesto:{id}` en Redis. TP6 · torque · responsable: Jan Lahorca.
 
+TP7 (JWT + roles) · responsable: Jan Lahorca.
+
 ## Endpoints
 
 | Método | Ruta | Respuestas |
@@ -27,12 +29,30 @@ de la colección `repuestos` (base MongoDB `inventory`) y de los locks
 - `LOCK_TTL_MS` tiene que ser mayor que `DEMO_DELAY_MS` (al arrancar avisa si no lo es).
 - Cliente Redis sin cola offline y con reconexión: si Redis cae, el descuento responde `503` al instante y se recupera solo cuando Redis vuelve.
 
+## Seguridad (TP7)
+
+El token (emitido por auth-service) se verifica **localmente**
+(`src/middleware/auth.js`: HS256, `iss`, `aud`, `exp`).
+
+| Endpoint | Público | MECANICO | ADMIN |
+|---|---|---|---|
+| `GET /api/repuestos` · `GET /:id` | ✔ | ✔ | ✔ |
+| `POST /api/repuestos/:id/descontar` | 401 | ✔ | ✔ |
+| `POST /api/repuestos/reiniciar` | 401 | **403** | ✔ |
+| `GET /api/repuestos/:id/lock` | 401 | **403** | ✔ |
+| `POST /api/repuestos/:id/descontar-sin-lock` | 401 | **403** | ✔ |
+
+workorders-service llama a `descontar` con el **token del usuario** que crea la
+orden. Configuración y manejo de secretos:
+[docs/tp7/secretos-y-configuracion.md](../../docs/tp7/secretos-y-configuracion.md).
+
 ## Estructura
 
 ```
 src/
   index.js               arranque: puerto, Mongo con reintentos, Redis en segundo plano, seed
   app.js                 Express: request id, log, /health, Swagger, errores
+  middleware/auth.js    validación del JWT (401) y autorización por rol (403)
   routes/ controllers/   HTTP
   services/repuestos.js  reglas de stock y sección crítica
   models/                schema Mongoose + seed (ids fijos)
@@ -51,6 +71,8 @@ src/
 | `DEMO_DELAY_MS` | `2000` | `1000` | retardo en la sección crítica (demo de carrera) |
 | `MONGO_RETRY_MS` | `3000` | `3000` | reintentos de conexión a Mongo |
 | `SEED_ON_START` | `true` | `true` | carga 3 repuestos si la colección está vacía |
+| `JWT_SECRET` | (≥ 32 caracteres) | `${JWT_SECRET}` del `.env` raíz | clave HS256 para **verificar** tokens (la misma que auth-service). Sin ella no arranca |
+| `JWT_ISSUER` · `JWT_AUDIENCE` | `torque-auth` · `torque` | ídem | emisor y audiencia esperados |
 | `LOG_LEVEL` | `info` | `info` | nivel de Winston |
 
 ## Ejecutar con Node (sin Docker)

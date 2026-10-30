@@ -1,5 +1,6 @@
 // Contrato OpenAPI 3 de inventory-service. Es la interfaz pública que usan
 // api-gateway y workorders-service (nadie accede a la base ni al Redis del servicio).
+const { aplicarSeguridad } = require("./seguridad");
 const ejemploId = "68c000000000000000000012";
 
 const error = (descripcion, ejemplo) => ({
@@ -48,13 +49,24 @@ const respuestaDescuento = {
   content: { "application/json": { schema: { $ref: "#/components/schemas/Descuento" } } },
 };
 
-module.exports = {
+// Matriz de acceso (TP7). Catálogo público; consumir stock, MECANICO o ADMIN;
+// operaciones de laboratorio/diagnóstico, solo ADMIN.
+const ACCESO = {
+  "GET /api/repuestos": null,
+  "GET /api/repuestos/{id}": null,
+  "POST /api/repuestos/{id}/descontar": ["MECANICO", "ADMIN"],
+  "POST /api/repuestos/reiniciar": ["ADMIN"],
+  "GET /api/repuestos/{id}/lock": ["ADMIN"],
+  "POST /api/repuestos/{id}/descontar-sin-lock": ["ADMIN"],
+};
+
+module.exports = aplicarSeguridad({
   openapi: "3.0.3",
   info: {
     title: "inventory-service",
     version: "1.0.0",
     description:
-      "Stock de repuestos y descuento concurrente (TP6 · torque). Dueño exclusivo de la colección `repuestos` y de los locks `lock:repuesto:{id}` en Redis.",
+      "Stock de repuestos y descuento concurrente (TP7 · torque). Dueño exclusivo de la colección `repuestos` y de los locks `lock:repuesto:{id}` en Redis.",
   },
   servers: [{ url: "/" }],
   tags: [{ name: "Repuestos" }, { name: "Concurrencia" }, { name: "Salud" }],
@@ -165,4 +177,4 @@ module.exports = {
       },
     },
   },
-};
+}, ACCESO);
