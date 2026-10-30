@@ -4,19 +4,19 @@ $ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.find({
 [
   {
     email: 'admin@torque.local',
-    passwordHash: '$2b$12$NZ5QZxD2nH9fXsP/ALDNJOA9ULcKZ9muTYdzCrKb6D8MyqeBL2CCO',
+    passwordHash: '$2b$12$ly8bxTOPSnExGYHcUOpdm.jlo7az4ZwuB8uABRAcQoIF50A7QHjUm',
     rol: 'ADMIN',
     activo: true
   },
   {
     email: 'mecanico1@torque.local',
-    passwordHash: '$2b$12$.KICHK5yUUD1r8x6defIT.Am0zsrEdrVhH49qVlRV3zdmQAVB2e0.',
+    passwordHash: '$2b$12$B0tu3S..l031YjGN92no1eaUqN5QkyQTeRfbN7ANLuVlaN5KicaHC',
     rol: 'MECANICO',
     activo: true
   },
   {
     email: 'mecanico2@torque.local',
-    passwordHash: '$2b$12$dOenQK9pQKZFcUQdn/UoPeUbVK8Tk7iVuNA5CyjzqbPWn12cLd45K',
+    passwordHash: '$2b$12$IWmFzc5V0QkLZ2t4o8gNXeqI5/WrpdT85j.oOMubX3u5W/Rbdgip6',
     rol: 'MECANICO',
     activo: true
   }

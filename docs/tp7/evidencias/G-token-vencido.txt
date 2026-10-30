@@ -5,8 +5,8 @@ $ JWT_EXPIRES_IN=5s docker compose up -d --wait auth-service 2>&1 | tail -n 1
 
 
 $ decodificar "$T_CORTO" | tail -n 2
-iat    : 2026-10-30T00:08:40.000Z
-exp    : 2026-10-30T00:08:45.000Z (vigencia 5 s)
+iat    : 2026-10-30T14:06:45.000Z
+exp    : 2026-10-30T14:06:50.000Z (vigencia 5 s)
 
 
 $ pedir "$T_CORTO" GET /api/vehiculos/$VEH_COROLLA
