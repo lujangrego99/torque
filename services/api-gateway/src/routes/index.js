@@ -22,10 +22,13 @@ router.use(
     customSiteTitle: "torque — Swagger (api-gateway)",
     explorer: true,
     swaggerOptions: {
+      // El token cargado con "Authorize" se conserva al cambiar de servicio en el selector.
+      persistAuthorization: true,
       urls: [
         { url: "/api-docs/vehicles.json", name: "vehicles-service" },
         { url: "/api-docs/inventory.json", name: "inventory-service" },
         { url: "/api-docs/workorders.json", name: "workorders-service" },
+        { url: "/api-docs/auth.json", name: "auth-service (login)" },
         { url: "/api-docs/gateway.json", name: "api-gateway" },
       ],
     },

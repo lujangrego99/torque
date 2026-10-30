@@ -1,0 +1,41 @@
+# Swagger agregado en http://localhost:3000/api-docs (selector: vehicles, inventory, workorders, auth, gateway).
+# Esquema Bearer y operaciones protegidas con su rol y respuestas 401/403:
+
+$ curl -s http://localhost:3000/api-docs/auth.json | resumen_spec
+auth-service · securitySchemes: bearerAuth
+  [público] GET    /health                                          Estado del servicio y de su base
+  [público] POST   /api/auth/register                               Registro de usuario (público) — siempre crea un MECANICO
+  [público] POST   /api/auth/login                          401 403 Login (público) — emite el access token
+  [bearer]  GET    /api/auth/me                             401     Perfil del usuario del token (MECANICO, ADMIN)
+  [bearer]  GET    /api/auth/usuarios                       401 403 Listar usuarios — rol ADMIN
+  [bearer]  PATCH  /api/auth/usuarios/{id}                  401 403 Cambiar rol o habilitar/deshabilitar — rol ADMIN
+
+
+$ curl -s http://localhost:3000/api-docs/vehicles.json | resumen_spec
+vehicles-service · securitySchemes: bearerAuth
+  [público] GET    /health                                          Estado del servicio y de su base
+  [bearer]  GET    /api/vehiculos                           401     Listar vehículos — MECANICO, ADMIN
+  [bearer]  POST   /api/vehiculos                           401     Alta de vehículo — MECANICO, ADMIN
+  [bearer]  GET    /api/vehiculos/{id}                      401     Obtener un vehículo (también lo usa workorders-service para validar la referencia) — MECANICO, ADMIN
+  [bearer]  PUT    /api/vehiculos/{id}                      401     Reemplazo completo — MECANICO, ADMIN
+  [bearer]  DELETE /api/vehiculos/{id}                      401 403 Baja — ADMIN
+
+
+$ curl -s http://localhost:3000/api-docs/inventory.json | resumen_spec
+inventory-service · securitySchemes: bearerAuth
+  [público] GET    /health                                          Estado del servicio, su base y Redis
+  [público] GET    /api/repuestos                                   Listar repuestos y stock — público
+  [bearer]  POST   /api/repuestos/reiniciar                 401 403 Restaurar el stock a la semilla (estado inicial conocido para las pruebas) — ADMIN
+  [público] GET    /api/repuestos/{id}                              Obtener un repuesto — público
+  [bearer]  GET    /api/repuestos/{id}/lock                 401 403 Diagnóstico del lock en Redis — ADMIN
+  [bearer]  POST   /api/repuestos/{id}/descontar            401     Descontar stock con lock Redis (camino seguro; lo usa workorders-service) — MECANICO, ADMIN
+  [bearer]  POST   /api/repuestos/{id}/descontar-sin-lock   401 403 Descontar sin lock (demo de condición de carrera del TP2) — ADMIN
+
+
+$ curl -s http://localhost:3000/api-docs/workorders.json | resumen_spec
+workorders-service · securitySchemes: bearerAuth
+  [público] GET    /health                                          Estado del servicio y de su base (no depende de los servicios remotos)
+  [bearer]  GET    /api/ordenes                             401     Listar órdenes — MECANICO, ADMIN
+  [bearer]  POST   /api/ordenes                             401     Crear orden de trabajo (valida vehículo, valida repuestos y descuenta stock) — MECANICO, ADMIN
+  [bearer]  GET    /api/ordenes/{id}                        401 403 Obtener una orden (incluye estado por ítem) — MECANICO, ADMIN
+

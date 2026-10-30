@@ -28,9 +28,10 @@ app.use((req, res, next) => {
 
 app.get("/", (req, res) => {
   res.json({
-    mensaje: "torque — api-gateway (TP6 Programación Distribuida)",
+    mensaje: "torque — api-gateway (TP7 Programación Distribuida)",
     protocolo: req.protocol,
-    recursos: ["/api/vehiculos", "/api/repuestos", "/api/ordenes"],
+    recursos: ["/api/vehiculos", "/api/repuestos", "/api/ordenes", "/api/auth"],
+    login: "POST /api/auth/login",
     docs: "/api-docs",
     salud: ["/health", "/health/servicios"],
   });

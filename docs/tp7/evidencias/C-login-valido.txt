@@ -1,0 +1,22 @@
+
+$ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local","password":"clave-de-prueba-1"}'
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"usuario":{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}}
+HTTP 200
+
+# Contenido del JWT (header.payload decodificados; la firma no se muestra):
+
+$ decodificar "$T_MEC1"
+header : {"alg":"HS256","typ":"JWT"}
+payload: {"rol":"MECANICO","iat":1793318910,"exp":1793319810,"aud":"torque","iss":"torque-auth","sub":"6ae3dffd1ad170185e5ac8cb"}
+iat    : 2026-10-30T00:08:30.000Z
+exp    : 2026-10-30T00:23:30.000Z (vigencia 900 s)
+
+# Claims: sub (id del usuario), rol, iss, aud, iat y exp. Sin email, nombre, contraseña ni hash.
+# Login del admin inicial (credenciales desde .env):
+
+$ decodificar "$T_ADMIN"
+header : {"alg":"HS256","typ":"JWT"}
+payload: {"rol":"ADMIN","iat":1793318911,"exp":1793319811,"aud":"torque","iss":"torque-auth","sub":"6ae3dff71ad170185e5ac8c8"}
+iat    : 2026-10-30T00:08:31.000Z
+exp    : 2026-10-30T00:23:31.000Z (vigencia 900 s)
+

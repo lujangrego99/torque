@@ -1,0 +1,22 @@
+# Registro público: siempre crea un MECANICO. La respuesta no incluye la contraseña ni su hash.
+# Estado inicial: solo el admin (se borran los MECANICO de corridas anteriores).
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.deleteMany({rol: "MECANICO"}).deletedCount'
+0
+
+
+$ pedir '' POST /api/auth/register '{"email":"mecanico1@torque.local","nombre":"Mecanico Uno","password":"clave-de-prueba-1"}'
+{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}
+HTTP 201
+
+
+$ pedir '' POST /api/auth/register '{"email":"mecanico2@torque.local","nombre":"Mecanico Dos","password":"clave-de-prueba-1"}'
+{"id":"6ae3dffd1ad170185e5ac8ce","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.729Z"}
+HTTP 201
+
+# Datos inválidos → 400 controlado
+
+$ pedir '' POST /api/auth/register '{"email":"no-es-email","nombre":"X","password":"corta"}'
+{"error":"Datos inválidos o incompletos.","detalles":["email es obligatorio y debe tener formato válido.","nombre es obligatorio (2 a 60 caracteres).","password es obligatoria (mínimo 8 caracteres)."]}
+HTTP 400
+

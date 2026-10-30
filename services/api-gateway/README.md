@@ -2,7 +2,7 @@
 
 Punto de entrada único de torque. Termina HTTPS (certificado autofirmado del
 TP2), enruta por prefijo hacia el servicio dueño y publica el Swagger agregado.
-No tiene datos ni reglas de negocio. TP6 · torque · responsable: Gregorio Luján.
+No tiene datos ni reglas de negocio. TP6/TP7 · torque · responsable: Gregorio Luján.
 
 ## Rutas
 
@@ -11,14 +11,21 @@ No tiene datos ni reglas de negocio. TP6 · torque · responsable: Gregorio Luj�
 | `/api/vehiculos*` | `vehicles-service` |
 | `/api/repuestos*` | `inventory-service` |
 | `/api/ordenes*` | `workorders-service` |
+| `/api/auth*` | `auth-service` (TP7: login, registro, usuarios) |
 | `GET /health` | salud del gateway: `{service:"api-gateway", status:"ok"}` |
 | `GET /health/servicios` | salud agregada: consulta `/health` de cada servicio (200 si todos ok, 503 si alguno no) |
-| `GET /api-docs` | Swagger UI con selector: vehicles · inventory · workorders · gateway |
+| `GET /api-docs` | Swagger UI con selector: vehicles · inventory · workorders · auth · gateway (el token de **Authorize** se conserva al cambiar de servicio) |
 | `GET /api-docs/<servicio>.json` | spec real de cada servicio (lo trae de su `/api-docs.json`) |
 
 - Las respuestas del servicio (2xx/4xx/5xx) se devuelven **sin modificar**.
 - Si el servicio no responde (timeout, DNS, conexión rechazada): `503` propio con `servicio` y `causa`.
 - Genera o propaga `x-request-id` hacia los servicios: la misma operación se sigue en `docker compose logs`.
+
+## Seguridad (TP7)
+
+- El gateway **no valida** el JWT ni conoce `JWT_SECRET`. Reenvía `Authorization` sin modificarlo y devuelve el `WWW-Authenticate` del servicio.
+- Cada servicio dueño valida el token y decide 401/403. Así ningún servicio queda abierto si alguien le llega sin pasar por el gateway (dentro de la red `backend`).
+- No loguea headers: el token nunca aparece en sus logs.
 
 ## HTTPS
 
@@ -36,6 +43,7 @@ No tiene datos ni reglas de negocio. TP6 · torque · responsable: Gregorio Luj�
 | `VEHICLES_SERVICE_URL` | `http://localhost:3001` | `http://vehicles-service:3000` |
 | `INVENTORY_SERVICE_URL` | `http://localhost:3002` | `http://inventory-service:3000` |
 | `WORKORDERS_SERVICE_URL` | `http://localhost:3003` | `http://workorders-service:3000` |
+| `AUTH_SERVICE_URL` | `http://localhost:3004` | `http://auth-service:3000` |
 | `PROXY_TIMEOUT_MS` | `15000` | `15000` |
 | `HEALTH_TIMEOUT_MS` | `2000` | `2000` |
 | `LOG_LEVEL` | `info` | `info` |
@@ -53,6 +61,6 @@ npm start         # http://localhost:3000/api-docs
 ## Docker (imagen individual)
 
 ```bash
-docker build -t torque/api-gateway:tp6 ./services/api-gateway
-docker run --rm -p 3000:3000 torque/api-gateway:tp6   # /health = 200 aunque los servicios no estén
+docker build -t torque/api-gateway:tp7 ./services/api-gateway
+docker run --rm -p 3000:3000 torque/api-gateway:tp7   # /health = 200 aunque los servicios no estén
 ```

@@ -1,0 +1,28 @@
+# Se edita el payload del token de un MECANICO (rol → ADMIN) conservando la firma original.
+
+$ decodificar "$T_FALSO" | grep payload
+payload: {"rol":"ADMIN","iat":1793318912,"exp":1793319812,"aud":"torque","iss":"torque-auth","sub":"6ae3dffd1ad170185e5ac8cb"}
+
+
+$ pedir "$T_FALSO" DELETE /api/vehiculos/000000000000000000000000
+{"error":"No autenticado.","detalles":["La firma del token no es válida."]}
+HTTP 401
+
+# Token sin firma (alg=none) → 401
+
+$ pedir "$T_NONE" GET /api/vehiculos
+{"error":"No autenticado.","detalles":["El token no es válido."]}
+HTTP 401
+
+# Token bien formado pero firmado con OTRA clave → 401
+
+$ pedir "$T_OTRA" GET /api/vehiculos
+{"error":"No autenticado.","detalles":["La firma del token no es válida."]}
+HTTP 401
+
+
+$ docker compose logs --no-color --since 30s vehicles-service | grep -E '401' | cut -d'|' -f2- | tail -n 3
+ 2026-10-30T00:08:33.045Z [WARN] [vehicles-service] GET /api/vehiculos 401 2ms rid=de9ff55a-5f30-463b-b685-e209ab29cd15
+ 2026-10-30T00:08:33.283Z [WARN] [vehicles-service] GET /api/vehiculos: 401 invalid_token (La firma del token no es válida.) rid=e4a288bc-8a64-461f-966b-24b4f7372c99
+ 2026-10-30T00:08:33.283Z [WARN] [vehicles-service] GET /api/vehiculos 401 1ms rid=e4a288bc-8a64-461f-966b-24b4f7372c99
+

@@ -1,0 +1,35 @@
+# docker compose down (SIN -v) + up: contenedores nuevos, volumen auth-data intacto
+
+$ docker compose ps -q auth-service | cut -c1-12
+6f1e6700027d
+
+
+$ docker compose down 2>&1 | tail -n 2
+ Network torque_edge Removed 
+ Network torque_backend Removed 
+
+
+$ docker compose up -d --wait 2>&1 | tail -n 2
+ Container torque-workorders-service-1 Healthy 
+ Container torque-api-gateway-1 Healthy 
+
+
+$ docker compose ps -q auth-service | cut -c1-12
+74ab0bd8db24
+
+# El usuario registrado antes sigue existiendo y vuelve a autenticarse:
+
+$ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local","password":"clave-de-prueba-1"}'
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"usuario":{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}}
+HTTP 200
+
+
+$ pedir "$T_MEC1" GET /api/auth/me
+{"id":"6ae3dffd1ad170185e5ac8cb","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-10-30T00:08:29.318Z"}
+HTTP 200
+
+
+$ pedir "$T_MEC1" GET /api/vehiculos/$VEH_COROLLA
+{"id":"68c000000000000000000001","marca":"Toyota","modelo":"Corolla","anio":2018,"patente":"AB123CD","kilometraje":95000}
+HTTP 200
+

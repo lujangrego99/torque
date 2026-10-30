@@ -1,0 +1,46 @@
+# Documentos en auth-db (base de auth-service, sin puertos publicados):
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.find({}, {_id:0, email:1, rol:1, activo:1, passwordHash:1}).toArray()'
+[
+  {
+    email: 'admin@torque.local',
+    passwordHash: '$2b$12$NZ5QZxD2nH9fXsP/ALDNJOA9ULcKZ9muTYdzCrKb6D8MyqeBL2CCO',
+    rol: 'ADMIN',
+    activo: true
+  },
+  {
+    email: 'mecanico1@torque.local',
+    passwordHash: '$2b$12$.KICHK5yUUD1r8x6defIT.Am0zsrEdrVhH49qVlRV3zdmQAVB2e0.',
+    rol: 'MECANICO',
+    activo: true
+  },
+  {
+    email: 'mecanico2@torque.local',
+    passwordHash: '$2b$12$dOenQK9pQKZFcUQdn/UoPeUbVK8Tk7iVuNA5CyjzqbPWn12cLd45K',
+    rol: 'MECANICO',
+    activo: true
+  }
+]
+
+# passwordHash = bcrypt ($2b$, costo 12, salt incluido). La contraseña en texto plano no aparece en la base:
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.countDocuments({passwordHash: "clave-de-prueba-1"})'
+0
+
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'JSON.stringify(db.usuarios.find().toArray()).includes("clave-de-prueba-1")'
+false
+
+# Las demás bases no tienen usuarios (nadie más guarda credenciales):
+
+$ docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.getCollectionNames()'
+[ 'vehiculos' ]
+
+
+$ docker compose exec -T inventory-db mongosh inventory --quiet --eval 'db.getCollectionNames()'
+[ 'repuestos' ]
+
+
+$ docker compose exec -T workorders-db mongosh workorders --quiet --eval 'db.getCollectionNames()'
+[ 'ordenes' ]
+

@@ -1,0 +1,24 @@
+# Endpoint protegido sin Authorization → 401 + WWW-Authenticate
+
+$ curl -s -i http://localhost:3000/api/vehiculos | grep -iE '^HTTP|^www-authenticate|^\{'
+HTTP/1.1 401 Unauthorized
+www-authenticate: Bearer realm="torque", error="invalid_request"
+{"error":"No autenticado.","detalles":["Falta el header Authorization: Bearer <token>."]}
+
+# Header mal formado (sin 'Bearer') y token que no es un JWT → 401
+
+$ curl -s http://localhost:3000/api/ordenes -H 'Authorization: abc123' -w '\nHTTP %{http_code}\n'
+{"error":"No autenticado.","detalles":["El header Authorization debe tener el formato: Bearer <token>."]}
+HTTP 401
+
+
+$ pedir 'esto-no-es-un-jwt' GET /api/ordenes
+{"error":"No autenticado.","detalles":["El token está mal formado."]}
+HTTP 401
+
+# Endpoint público (catálogo de repuestos): responde sin token
+
+$ pedir '' GET /api/repuestos/68c000000000000000000013
+{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8}
+HTTP 200
+
