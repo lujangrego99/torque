@@ -1,0 +1,17 @@
+# Mismo email (también con otra capitalización) → 409
+
+$ pedir '' POST /api/auth/register '{"email":"mecanico1@torque.local","nombre":"Otro","password":"clave-de-prueba-1"}'
+{"error":"Conflicto de integridad.","detalles":["Ya existe un usuario con ese email."]}
+HTTP 409
+
+
+$ pedir '' POST /api/auth/register '{"email":"MECANICO1@torque.local","nombre":"Otro","password":"clave-de-prueba-1"}'
+{"error":"Conflicto de integridad.","detalles":["Ya existe un usuario con ese email."]}
+HTTP 409
+
+# El cliente no puede elegir su rol: enviar rol → 400 (no hay forma de auto-asignarse ADMIN)
+
+$ pedir '' POST /api/auth/register '{"email":"intruso@torque.local","nombre":"Intruso","password":"clave-de-prueba-1","rol":"ADMIN"}'
+{"error":"Datos inválidos o incompletos.","detalles":["El rol no se elige al registrarse: todo usuario nuevo es MECANICO."]}
+HTTP 400
+

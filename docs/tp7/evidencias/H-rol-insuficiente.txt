@@ -1,0 +1,27 @@
+# Token válido de MECANICO en operaciones exclusivas de ADMIN → 403 (no 401)
+
+$ pedir "$T_MEC1" DELETE /api/vehiculos/$VEH_COROLLA
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+
+
+$ pedir "$T_MEC1" POST /api/repuestos/reiniciar
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+
+
+$ pedir "$T_MEC1" GET /api/auth/usuarios
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+
+# Propiedad del recurso: MECANICO 2 intenta ver una orden creada por MECANICO 1 → 403
+
+$ pedir "$T_MEC2" GET /api/ordenes/$ORDEN
+{"error":"Permisos insuficientes.","detalles":["La orden pertenece a otro usuario."]}
+HTTP 403
+
+# …y su listado no incluye órdenes ajenas:
+
+$ pedir "$T_MEC2" GET /api/ordenes | grep -c '"id"' || true
+0
+
