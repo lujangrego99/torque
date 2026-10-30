@@ -1,5 +1,6 @@
 // Contrato OpenAPI 3 de vehicles-service. Es la interfaz pública que usan
 // api-gateway y workorders-service (nadie accede a la base del servicio).
+const { aplicarSeguridad } = require("./seguridad");
 const ejemploId = "68c000000000000000000001";
 
 const error = (descripcion, ejemplo) => ({
@@ -29,12 +30,21 @@ const parametroId = {
   example: ejemploId,
 };
 
-module.exports = {
+// Matriz de acceso (TP7). Todo el recurso requiere identidad; la baja, ADMIN.
+const ACCESO = {
+  "GET /api/vehiculos": ["MECANICO", "ADMIN"],
+  "POST /api/vehiculos": ["MECANICO", "ADMIN"],
+  "GET /api/vehiculos/{id}": ["MECANICO", "ADMIN"],
+  "PUT /api/vehiculos/{id}": ["MECANICO", "ADMIN"],
+  "DELETE /api/vehiculos/{id}": ["ADMIN"],
+};
+
+module.exports = aplicarSeguridad({
   openapi: "3.0.3",
   info: {
     title: "vehicles-service",
     version: "1.0.0",
-    description: "Parque de vehículos del taller (TP6 · torque). Dueño exclusivo de la colección `vehiculos`.",
+    description: "Parque de vehículos del taller (TP7 · torque). Dueño exclusivo de la colección `vehiculos`.",
   },
   servers: [{ url: "/" }],
   tags: [{ name: "Vehículos" }, { name: "Salud" }],
@@ -140,4 +150,4 @@ module.exports = {
       },
     },
   },
-};
+}, ACCESO);
