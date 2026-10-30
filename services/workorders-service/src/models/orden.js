@@ -23,6 +23,9 @@ const ordenSchema = new mongoose.Schema(
     // Referencia lógica a vehicles-service + copia de la patente al momento de la orden.
     vehiculoId: { type: String, required: true, index: true },
     patente: String,
+    // Identidad que creó la orden (sub del JWT, emitido por auth-service). Es una
+    // referencia lógica: este servicio no conoce la base de usuarios.
+    creadaPor: { type: String, index: true },
     descripcion: {
       type: String,
       required: [true, "El campo descripcion es obligatorio."],

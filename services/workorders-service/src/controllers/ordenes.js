@@ -3,8 +3,14 @@ const servicio = require("../services/ordenes");
 // Adaptan la request HTTP al caso de uso y arman la respuesta.
 // Los errores los resuelve el middleware de app.js.
 
+// Contexto que necesita el caso de uso: quién opera, el token a propagar a
+// vehicles/inventory y el request id para los logs.
+function contexto(req) {
+  return { usuario: req.usuario, token: req.token, requestId: req.id };
+}
+
 async function crear(req, res) {
-  const resultado = await servicio.crear(req.body, req.id);
+  const resultado = await servicio.crear(req.body, contexto(req));
   if (resultado.status === 201) {
     return res.status(201).json(resultado.orden);
   }
@@ -13,11 +19,11 @@ async function crear(req, res) {
 }
 
 async function listar(req, res) {
-  res.status(200).json(await servicio.listar(req.query));
+  res.status(200).json(await servicio.listar(req.query, req.usuario));
 }
 
 async function obtener(req, res) {
-  res.status(200).json(await servicio.obtener(req.params.id));
+  res.status(200).json(await servicio.obtener(req.params.id, req.usuario));
 }
 
 module.exports = { crear, listar, obtener };

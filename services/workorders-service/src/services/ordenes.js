@@ -13,6 +13,7 @@ function serializar(doc) {
     id: String(doc._id),
     vehiculoId: doc.vehiculoId,
     patente: doc.patente,
+    creadaPor: doc.creadaPor || null,
     descripcion: doc.descripcion,
     estado: doc.estado,
     items: doc.items.map((i) => ({
@@ -93,13 +94,23 @@ function errorPorDependencia(err, contexto) {
 // revierten (no hay transacción distribuida): la orden queda FALLIDA con
 // requiereCompensacion=true y el detalle por ítem para compensar más adelante.
 
-async function crear(body, requestId) {
+// La identidad viaja de punta a punta: el token del usuario se propaga a
+// vehicles-service y inventory-service (cada uno lo valida por su cuenta) y la
+// orden queda a nombre de `usuario.id` (sub del token) para la regla de propiedad.
+async function crear(body, { usuario, token, requestId }) {
   const entrada = validarEntrada(body);
+  const remoto = { requestId, token };
 
   // Paso 1: el vehículo tiene que existir (dato ajeno → interfaz pública).
   let vehiculo;
   try {
-    const r = await vehicles.obtenerVehiculo(entrada.vehiculoId, requestId);
+    const r = await vehicles.obtenerVehiculo(entrada.vehiculoId, remoto);
+    if (r.status === 401 || r.status === 403) {
+      // El token propagado fue rechazado aguas abajo (p. ej. venció en el medio).
+      throw new ErrorHttp(r.status, (r.body && r.body.error) || "No autorizado.", [
+        "vehicles-service rechazó la identidad propagada. No se registró la orden.",
+      ]);
+    }
     if (!r.encontrado) {
       throw new ErrorHttp(404, "Vehículo no encontrado.", [`No existe el vehículo ${entrada.vehiculoId} en vehicles-service.`]);
     }
@@ -114,7 +125,7 @@ async function crear(body, requestId) {
   const items = [];
   for (const r of entrada.repuestos) {
     try {
-      const res = await inventory.obtenerRepuesto(r.repuestoId, requestId);
+      const res = await inventory.obtenerRepuesto(r.repuestoId, remoto);
       if (!res.encontrado) {
         throw new ErrorHttp(404, "Repuesto no encontrado.", [`No existe el repuesto ${r.repuestoId} en inventory-service.`]);
       }
@@ -132,13 +143,14 @@ async function crear(body, requestId) {
     orden = await Orden.create({
       vehiculoId: vehiculo.id,
       patente: vehiculo.patente,
+      creadaPor: usuario.id,
       descripcion: entrada.descripcion,
       items,
     });
   } catch (err) {
     throw interpretarErrorPersistencia(err) || err;
   }
-  logger.info(`Orden ${orden._id} registrada PENDIENTE (vehículo ${vehiculo.patente}, ${items.length} repuestos) rid=${requestId}.`);
+  logger.info(`Orden ${orden._id} registrada PENDIENTE (vehículo ${vehiculo.patente}, ${items.length} repuestos, sub=${usuario.id}) rid=${requestId}.`);
 
   // Paso 4: descuentos remotos, uno por uno.
   let falla = null;
@@ -148,7 +160,7 @@ async function crear(body, requestId) {
       continue;
     }
     try {
-      const r = await inventory.descontar(item.repuestoId, item.cantidad, requestId);
+      const r = await inventory.descontar(item.repuestoId, item.cantidad, remoto);
       if (r.ok) {
         item.estado = "DESCONTADO";
         item.detalle = `stock restante ${r.body.item.stock}`;
@@ -205,6 +217,8 @@ async function crear(body, requestId) {
   const mensajes = {
     409: "No se pudo completar la orden: conflicto de stock.",
     404: "No se pudo completar la orden: repuesto inexistente.",
+    401: "No se pudo completar la orden: inventory-service rechazó el token propagado.",
+    403: "No se pudo completar la orden: permisos insuficientes en inventory-service.",
     502: "No se pudo completar la orden: error en un servicio dependiente.",
     503: "No se pudo completar la orden: dependencia no disponible.",
   };
@@ -232,9 +246,12 @@ async function guardarAvance(orden) {
 }
 
 // --- Consultas --------------------------------------------------------------
+//
+// Regla de propiedad (TP7 §11.2): el rol no alcanza. Un MECANICO solo ve las
+// órdenes que creó él (creadaPor = sub del token); ADMIN ve todas.
 
-async function listar(filtros) {
-  const query = {};
+async function listar(filtros, usuario) {
+  const query = usuario.rol === "ADMIN" ? {} : { creadaPor: usuario.id };
   if (filtros.estado) {
     if (!Orden.ESTADOS_ORDEN.includes(filtros.estado)) {
       throw invalido([`estado debe ser uno de: ${Orden.ESTADOS_ORDEN.join(", ")}.`]);
@@ -246,11 +263,15 @@ async function listar(filtros) {
   return docs.map(serializar);
 }
 
-async function obtener(idCrudo) {
+async function obtener(idCrudo, usuario) {
   const id = parsearObjectId(idCrudo);
   if (id === null) throw invalido(["El id debe ser un ObjectId hexadecimal de 24 caracteres."]);
   const doc = await Orden.findById(id);
   if (!doc) throw new ErrorHttp(404, "Orden no encontrada.");
+  if (usuario.rol !== "ADMIN" && doc.creadaPor !== usuario.id) {
+    logger.warn(`Orden ${doc._id}: acceso denegado a sub=${usuario.id} (pertenece a ${doc.creadaPor || "nadie"}).`);
+    throw new ErrorHttp(403, "Permisos insuficientes.", ["La orden pertenece a otro usuario."]);
+  }
   return serializar(doc);
 }
 
