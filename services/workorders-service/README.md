@@ -5,6 +5,8 @@ trabajo sobre un vehículo y consume repuestos. Es el **único dueño** de la
 colección `ordenes` (base MongoDB `workorders`). TP6 · torque · responsable:
 Agustín Martínez.
 
+TP7 (JWT, propagación y propiedad) · responsable: Agustín Martínez.
+
 No tiene acceso a las bases de vehículos ni de inventario: los consulta por su
 **interfaz HTTP pública** y guarda solo sus ids (referencias lógicas).
 
@@ -55,12 +57,29 @@ interpreta la respuesta de inventory. Análisis completo:
 | timeout / DNS / conexión rechazada / 503 remoto | 503 controlado (en un descuento por timeout el ítem queda `INCIERTO`) |
 | otro 5xx | 502 |
 
+## Seguridad (TP7)
+
+Todo `/api/ordenes` requiere `Authorization: Bearer <token>`, verificado
+localmente (`src/middleware/auth.js`).
+
+- **Propagación:** el mismo token del usuario se reenvía a vehicles-service y inventory-service (`src/clients/http.js`). Cada uno lo valida por su cuenta.
+- **Propiedad:** la orden guarda `creadaPor = sub`. Un MECANICO solo lista y consulta sus órdenes (ajena → **403**); ADMIN ve todas.
+
+| Endpoint | MECANICO | ADMIN | Sin token |
+|---|---|---|---|
+| `POST /api/ordenes` | ✔ (queda a su nombre) | ✔ | 401 |
+| `GET /api/ordenes` | solo las propias | todas | 401 |
+| `GET /api/ordenes/:id` | propia ✔ · ajena **403** | ✔ | 401 |
+
+Análisis completo: [docs/tp7/propagacion-y-propiedad.md](../../docs/tp7/propagacion-y-propiedad.md).
+
 ## Estructura
 
 ```
 src/
   index.js               arranque: puerto, Mongo con reintentos, índices
   app.js                 Express: request id, log, /health, Swagger, errores
+  middleware/auth.js    validación del JWT (401) y autorización por rol (403)
   routes/ controllers/   HTTP
   services/ordenes.js    caso de uso "crear orden" y consultas
   clients/               comunicación con vehicles-service e inventory-service
@@ -80,6 +99,8 @@ src/
 | `VEHICLES_TIMEOUT_MS` | `2000` | `2000` | timeout hacia vehicles |
 | `INVENTORY_TIMEOUT_MS` | `5000` | `5000` | timeout hacia inventory (> `DEMO_DELAY_MS`) |
 | `MONGO_RETRY_MS` | `3000` | `3000` | reintentos de conexión |
+| `JWT_SECRET` | (≥ 32 caracteres) | `${JWT_SECRET}` del `.env` raíz | clave HS256 para **verificar** tokens (la misma que auth-service). Sin ella no arranca |
+| `JWT_ISSUER` · `JWT_AUDIENCE` | `torque-auth` · `torque` | ídem | emisor y audiencia esperados |
 | `LOG_LEVEL` | `info` | `info` | nivel de Winston |
 
 ## Ejecutar con Node (sin Docker)

@@ -1,4 +1,5 @@
 // Contrato OpenAPI 3 de workorders-service.
+const { aplicarSeguridad } = require("./seguridad");
 const error = (descripcion, ejemplo) => ({
   description: descripcion,
   content: { "application/json": { schema: { $ref: "#/components/schemas/Error" }, example: ejemplo } },
@@ -9,13 +10,21 @@ const ordenFallida = (descripcion, ejemplo) => ({
   content: { "application/json": { schema: { $ref: "#/components/schemas/OrdenFallida" }, example: ejemplo } },
 });
 
-module.exports = {
+// Matriz de acceso (TP7). Todo requiere identidad; además, regla de propiedad:
+// un MECANICO solo lista/consulta las órdenes que creó (ADMIN, todas).
+const ACCESO = {
+  "GET /api/ordenes": ["MECANICO", "ADMIN"],
+  "POST /api/ordenes": ["MECANICO", "ADMIN"],
+  "GET /api/ordenes/{id}": ["MECANICO", "ADMIN"],
+};
+
+module.exports = aplicarSeguridad({
   openapi: "3.0.3",
   info: {
     title: "workorders-service",
     version: "1.0.0",
     description: [
-      "Órdenes de trabajo del taller (TP6 · torque). Dueño exclusivo de la colección `ordenes`.",
+      "Órdenes de trabajo del taller (TP7 · torque). Dueño exclusivo de la colección `ordenes`.",
       "Para crear una orden consulta **vehicles-service** (`GET /api/vehiculos/:id`) e **inventory-service**",
       "(`GET /api/repuestos/:id` y `POST /api/repuestos/:id/descontar`) por HTTP. Guarda solo referencias lógicas (ids).",
       "",
@@ -40,6 +49,7 @@ module.exports = {
       get: {
         tags: ["Órdenes"],
         summary: "Listar órdenes",
+        description: "Un MECANICO recibe solo las órdenes que creó; ADMIN recibe todas.",
         parameters: [
           { name: "estado", in: "query", schema: { type: "string", enum: ["PENDIENTE", "CONFIRMADA", "FALLIDA"] } },
           { name: "vehiculoId", in: "query", schema: { type: "string" } },
@@ -105,10 +115,12 @@ module.exports = {
       get: {
         tags: ["Órdenes"],
         summary: "Obtener una orden (incluye estado por ítem)",
+        description: "Regla de propiedad: un MECANICO solo puede ver las órdenes que creó (`creadaPor` = `sub` de su token). ADMIN ve todas.",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", pattern: "^[a-fA-F0-9]{24}$" } }],
         responses: {
           200: { description: "Encontrada", content: { "application/json": { schema: { $ref: "#/components/schemas/Orden" } } } },
           400: error("Id inválido", { error: "Datos inválidos o incompletos." }),
+          403: error("MECANICO consultando una orden de otro usuario", { error: "Permisos insuficientes.", detalles: ["La orden pertenece a otro usuario."] }),
           404: error("Inexistente", { error: "Orden no encontrada." }),
         },
       },
@@ -153,6 +165,7 @@ module.exports = {
           id: { type: "string" },
           vehiculoId: { type: "string" },
           patente: { type: "string", example: "AB123CD" },
+          creadaPor: { type: "string", nullable: true, description: "sub del usuario que creó la orden (null en órdenes anteriores al TP7)", example: "6720f0c2a1b2c3d4e5f60718" },
           descripcion: { type: "string" },
           estado: { type: "string", enum: ["PENDIENTE", "CONFIRMADA", "FALLIDA"] },
           items: { type: "array", items: { $ref: "#/components/schemas/Item" } },
@@ -183,4 +196,4 @@ module.exports = {
       },
     },
   },
-};
+}, ACCESO);
