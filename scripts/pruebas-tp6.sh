@@ -13,6 +13,21 @@ FILTRO="${1:-}"
 JSON='content-type: application/json'
 mkdir -p "$EVID"
 
+# TP7: los endpoints de negocio requieren JWT. Estas pruebas (TP6) operan como
+# ADMIN: cada curl lleva el token del admin inicial (credenciales en .env).
+# El header no se muestra en la evidencia. Ver scripts/pruebas-tp7.sh para la seguridad.
+[ -f .env ] || bash scripts/generar-env.sh
+set -a; . ./.env; set +a
+TOKEN_ADMIN=""
+curl() {
+  if [ -z "$TOKEN_ADMIN" ]; then
+    TOKEN_ADMIN=$(command curl -s -X POST "$GW/api/auth/login" -H 'content-type: application/json' \
+      -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" 2>/dev/null |
+      node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{process.stdout.write(JSON.parse(d).accessToken||'')}catch{}})")
+  fi
+  if [ -n "$TOKEN_ADMIN" ]; then command curl -H "Authorization: Bearer $TOKEN_ADMIN" "$@"; else command curl "$@"; fi
+}
+
 VEH_COROLLA=68c000000000000000000001
 VEH_RANGER=68c000000000000000000002
 REP_FILTRO=68c000000000000000000011
@@ -68,7 +83,7 @@ if seccion "01-build-individual"; then
   nota "Ejecución individual de una imagen, sin su base: el proceso arranca, responde /health 503 (degraded)"
   nota "y reintenta la conexión en lugar de caerse."
   docker rm -f torque-solo >/dev/null 2>&1
-  ej "docker run -d --rm --name torque-solo -p 39001:3000 -e MONGODB_URI=mongodb://no-existe:27017/vehicles torque/vehicles-service:tp6"
+  ej "docker run -d --rm --name torque-solo -p 39001:3000 -e MONGODB_URI=mongodb://no-existe:27017/vehicles -e JWT_SECRET=\$JWT_SECRET torque/vehicles-service:tp6"
   sleep 8
   ej "curl -s -w '\nHTTP %{http_code}' http://localhost:39001/health"
   ej "docker logs torque-solo 2>&1 | grep -E 'INFO|WARN|ERROR' | tail -n 4"
