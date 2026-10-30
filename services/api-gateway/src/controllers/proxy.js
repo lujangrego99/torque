@@ -3,8 +3,10 @@ const { llamar, ServicioNoDisponible } = require("../clients/servicios");
 const { resolver } = require("../services/rutas");
 
 // Headers que se reenvían al servicio interno y de vuelta al cliente.
-const HEADERS_IDA = ["content-type", "accept"];
-const HEADERS_VUELTA = ["content-type", "location"];
+// Authorization pasa sin tocar: el gateway NO valida el JWT, lo valida cada
+// servicio dueño (así ninguno confía en que "alguien antes ya lo revisó").
+const HEADERS_IDA = ["content-type", "accept", "authorization"];
+const HEADERS_VUELTA = ["content-type", "location", "www-authenticate"];
 
 // Reenvía la request al servicio dueño del prefijo y devuelve su respuesta sin
 // modificarla (status y cuerpo, incluidos 4xx/5xx funcionales del servicio).

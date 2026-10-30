@@ -19,6 +19,7 @@ module.exports = {
     vehicles: { nombre: "vehicles-service", url: process.env.VEHICLES_SERVICE_URL || "http://localhost:3001" },
     inventory: { nombre: "inventory-service", url: process.env.INVENTORY_SERVICE_URL || "http://localhost:3002" },
     workorders: { nombre: "workorders-service", url: process.env.WORKORDERS_SERVICE_URL || "http://localhost:3003" },
+    auth: { nombre: "auth-service", url: process.env.AUTH_SERVICE_URL || "http://localhost:3004" },
   },
   proxyTimeoutMs: entero(process.env.PROXY_TIMEOUT_MS, 15000),
   healthTimeoutMs: entero(process.env.HEALTH_TIMEOUT_MS, 2000),

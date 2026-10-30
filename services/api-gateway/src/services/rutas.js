@@ -6,6 +6,7 @@ const RUTAS = [
   { prefijo: "/api/vehiculos", servicio: config.servicios.vehicles },
   { prefijo: "/api/repuestos", servicio: config.servicios.inventory },
   { prefijo: "/api/ordenes", servicio: config.servicios.workorders },
+  { prefijo: "/api/auth", servicio: config.servicios.auth },
 ];
 
 function resolver(ruta) {

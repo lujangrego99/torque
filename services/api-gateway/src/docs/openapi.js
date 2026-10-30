@@ -6,13 +6,18 @@ module.exports = {
     title: "api-gateway",
     version: "1.0.0",
     description: [
-      "Punto de entrada único de torque (TP6). Termina HTTPS, enruta por prefijo y agrega la documentación.",
+      "Punto de entrada único de torque (TP7). Termina HTTPS, enruta por prefijo y agrega la documentación.",
       "",
       "| Prefijo público | Servicio dueño |",
       "|---|---|",
       "| `/api/vehiculos` | vehicles-service |",
       "| `/api/repuestos` | inventory-service |",
       "| `/api/ordenes` | workorders-service |",
+      "| `/api/auth` | auth-service |",
+      "",
+      "**Seguridad (TP7):** el header `Authorization: Bearer <token>` se reenvía sin modificar. El gateway no valida el JWT:",
+      "lo valida cada servicio dueño (firma HS256, emisor, audiencia y vencimiento) y responde 401/403.",
+      "Para probar: elegir *auth-service (login)* en el selector → `POST /api/auth/login` → **Authorize** con el `accessToken`.",
       "",
       "Las respuestas de los servicios (incluidos sus 4xx/5xx) se devuelven sin modificar.",
       "Si el servicio dueño no responde (timeout, DNS, conexión rechazada) el gateway responde **503** con `servicio` y `causa`.",
@@ -53,7 +58,7 @@ module.exports = {
       },
     },
     "/api/{recurso}": {
-      parameters: [{ name: "recurso", in: "path", required: true, schema: { type: "string", enum: ["vehiculos", "repuestos", "ordenes"] } }],
+      parameters: [{ name: "recurso", in: "path", required: true, schema: { type: "string", enum: ["vehiculos", "repuestos", "ordenes", "auth"] } }],
       get: {
         tags: ["Salud"],
         summary: "Proxy hacia el servicio dueño (ver specs de cada servicio)",
