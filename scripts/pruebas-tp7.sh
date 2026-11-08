@@ -6,6 +6,10 @@
 #   bash scripts/pruebas-tp7.sh            → todas las secciones
 #   bash scripts/pruebas-tp7.sh G-         → solo las que empiezan así
 #
+# Adaptado a las correcciones: alta administrada (A y B), vehículos con dueño.
+# Levantar con LAB_ENDPOINTS=true (I usa reiniciar). Las evidencias del TP7 ya
+# entregadas (tag tp7-entrega) no se vuelven a commitear.
+#
 # Convención de la evidencia:
 #   pedir "$TOKEN" MÉTODO RUTA [BODY]  =  curl -X MÉTODO $GW$RUTA -H "Authorization: Bearer $TOKEN" [-d BODY]
 #   (pedir "" ... = sin header Authorization)
@@ -28,6 +32,9 @@ MEC2=mecanico2@torque.local
 
 [ -f .env ] || bash scripts/generar-env.sh
 set -a; . ./.env; set +a
+# Estas pruebas usan los endpoints de laboratorio (reiniciar / carrera): se
+# fuerzan acá porque .env los deja apagados (LAB_ENDPOINTS=false).
+export LAB_ENDPOINTS=true
 
 # ------------------------------------------------------------------ helpers
 seccion() {
@@ -88,9 +95,10 @@ resumen_spec() { # resumen_spec < spec.json → esquema de seguridad y acceso po
 }
 id_de() { node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const t=d.split('\nHTTP')[0];try{process.stdout.write(JSON.parse(t).id||'')}catch{}})"; }
 
-asegurar_usuarios() { # crea los mecánicos de prueba si no existen (idempotente)
+asegurar_usuarios() { # crea los mecánicos de prueba si no existen (alta administrada, idempotente)
+  local ta; ta=$(token_de "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
   for u in "$MEC1:Mecanico Uno" "$MEC2:Mecanico Dos"; do
-    curl -s -o /dev/null -X POST "$GW/api/auth/register" -H "$JSON" \
+    curl -s -o /dev/null -X POST "$GW/api/auth/usuarios" -H "$JSON" -H "Authorization: Bearer $ta" \
       -d "{\"email\":\"${u%%:*}\",\"nombre\":\"${u#*:}\",\"password\":\"$PASS_MEC\"}"
   done
 }
@@ -106,23 +114,28 @@ fi
 
 # ------------------------------------------------------------------ A registro
 if seccion "A-registro"; then
-  nota "Registro público: siempre crea un MECANICO. La respuesta no incluye la contraseña ni su hash."
+  nota "Corrección (requisito 1): el alta es ADMINISTRADA. No hay registro público; los mecánicos los crea un ADMIN."
   nota "Estado inicial: solo el admin (se borran los MECANICO de corridas anteriores)."
   ej "docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.deleteMany({rol: \"MECANICO\"}).deletedCount'"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"$MEC1\",\"nombre\":\"Mecanico Uno\",\"password\":\"$PASS_MEC\"}'"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"$MEC2\",\"nombre\":\"Mecanico Dos\",\"password\":\"$PASS_MEC\"}'"
+  T_ADMIN=$(token_de "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
+  ej "pedir \"\$T_ADMIN\" POST /api/auth/usuarios '{\"email\":\"$MEC1\",\"nombre\":\"Mecanico Uno\",\"password\":\"$PASS_MEC\"}'"
+  ej "pedir \"\$T_ADMIN\" POST /api/auth/usuarios '{\"email\":\"$MEC2\",\"nombre\":\"Mecanico Dos\",\"password\":\"$PASS_MEC\"}'"
   nota "Datos inválidos → 400 controlado"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"no-es-email\",\"nombre\":\"X\",\"password\":\"corta\"}'"
+  ej "pedir \"\$T_ADMIN\" POST /api/auth/usuarios '{\"email\":\"no-es-email\",\"nombre\":\"X\",\"password\":\"corta\"}'"
+  nota "El registro público ya no existe → 404"
+  ej "pedir '' POST /api/auth/register '{\"email\":\"otro@torque.local\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}'"
 fi
 
 # ------------------------------------------------------------------ B duplicado
 if seccion "B-duplicado"; then
   asegurar_usuarios
+  T_ADMIN=$(token_de "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
+  T_MEC1=$(token_de "$MEC1" "$PASS_MEC")
   nota "Mismo email (también con otra capitalización) → 409"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"$MEC1\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}'"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"MECANICO1@torque.local\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}'"
-  nota "El cliente no puede elegir su rol: enviar rol → 400 (no hay forma de auto-asignarse ADMIN)"
-  ej "pedir '' POST /api/auth/register '{\"email\":\"intruso@torque.local\",\"nombre\":\"Intruso\",\"password\":\"$PASS_MEC\",\"rol\":\"ADMIN\"}'"
+  ej "pedir \"\$T_ADMIN\" POST /api/auth/usuarios '{\"email\":\"$MEC1\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}'"
+  ej "pedir \"\$T_ADMIN\" POST /api/auth/usuarios '{\"email\":\"MECANICO1@torque.local\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}'"
+  nota "Un MECANICO no puede crear usuarios (ni auto-asignarse ADMIN) → 403"
+  ej "pedir \"\$T_MEC1\" POST /api/auth/usuarios '{\"email\":\"intruso@torque.local\",\"nombre\":\"Intruso\",\"password\":\"$PASS_MEC\",\"rol\":\"ADMIN\"}'"
 fi
 
 # ------------------------------------------------------------------ C login OK
@@ -157,7 +170,7 @@ if seccion "E-sin-token"; then
   nota "Header mal formado (sin 'Bearer') y token que no es un JWT → 401"
   ej "curl -s $GW/api/ordenes -H 'Authorization: abc123' -w '\nHTTP %{http_code}\n'"
   ej "pedir 'esto-no-es-un-jwt' GET /api/ordenes"
-  nota "Endpoint público (catálogo de repuestos): responde sin token"
+  nota "Corrección (requisito 5): el catálogo de repuestos ya no es público → también 401 sin token"
   ej "pedir '' GET /api/repuestos/$REP_BUJIAS"
 fi
 
@@ -226,10 +239,11 @@ if seccion "I-rol-autorizado"; then
   asegurar_usuarios
   T_ADMIN=$(token_de "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
   T_MEC1=$(token_de "$MEC1" "$PASS_MEC")
+  docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehiculos.deleteMany({patente: "AE001ZZ"})' >/dev/null
   nota "MECANICO: alta de vehículo (MECANICO, ADMIN) → 201"
-  ej 'pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000}"'
+  ej 'pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"'
   VEH_NUEVO=$(pedir "$T_ADMIN" GET /api/vehiculos | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const v=JSON.parse(d.split('\nHTTP')[0]).find(x=>x.patente==='AE001ZZ');process.stdout.write(v?v.id:'')})")
-  nota "ADMIN: baja del vehículo (solo ADMIN) → 204"
+  nota "ADMIN: baja (lógica) del vehículo (solo ADMIN) → 200"
   ej 'pedir "$T_ADMIN" DELETE /api/vehiculos/$VEH_NUEVO'
   nota "ADMIN: operación de laboratorio sobre stock → 200"
   ej 'pedir "$T_ADMIN" POST /api/repuestos/reiniciar'

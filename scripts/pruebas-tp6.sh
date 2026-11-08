@@ -4,6 +4,10 @@
 #
 #   bash scripts/pruebas-tp6.sh            → todas las secciones
 #   bash scripts/pruebas-tp6.sh 08-fallo   → solo las que empiezan así
+#
+# Regresión después de las correcciones: levantar con LAB_ENDPOINTS=true (la
+# carrera y reset-datos usan endpoints de laboratorio). Las evidencias de TP6 ya
+# entregadas (tag tp6-entrega) no se vuelven a commitear.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,6 +22,9 @@ mkdir -p "$EVID"
 # El header no se muestra en la evidencia. Ver scripts/pruebas-tp7.sh para la seguridad.
 [ -f .env ] || bash scripts/generar-env.sh
 set -a; . ./.env; set +a
+# Estas pruebas usan los endpoints de laboratorio (reiniciar / carrera): se
+# fuerzan acá porque .env los deja apagados (LAB_ENDPOINTS=false).
+export LAB_ENDPOINTS=true
 TOKEN_ADMIN=""
 curl() {
   if [ -z "$TOKEN_ADMIN" ]; then
@@ -113,26 +120,27 @@ fi
 # ------------------------------------------------------------------ 04 crud
 if seccion "04-crud"; then
   bash scripts/reset-datos.sh >/dev/null
+  docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehiculos.deleteMany({patente: "AE111ZZ"})' >/dev/null
   nota "Vehículos (vehicles-service vía gateway)"
   ej req GET /api/vehiculos
-  ej req POST /api/vehiculos "'{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE111ZZ\",\"kilometraje\":15000}'"
+  ej req POST /api/vehiculos "'{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE111ZZ\",\"kilometraje\":15000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}'"
   ID=$(curl -s "$GW/api/vehiculos" | grep -o '"id":"[^"]*","marca":"Fiat"' | head -1 | cut -d'"' -f4)
   ej req GET "/api/vehiculos/$ID"
-  ej req PUT "/api/vehiculos/$ID" "'{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE111ZZ\",\"kilometraje\":20000}'"
-  ej req POST /api/vehiculos "'{\"marca\":\"Fiat\",\"modelo\":\"Uno\",\"anio\":2010,\"patente\":\"AE111ZZ\",\"kilometraje\":1}'"
+  ej req PUT "/api/vehiculos/$ID" "'{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE111ZZ\",\"kilometraje\":20000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}'"
+  ej req POST /api/vehiculos "'{\"marca\":\"Fiat\",\"modelo\":\"Uno\",\"anio\":2010,\"patente\":\"AE111ZZ\",\"kilometraje\":1,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}'"
   ej req POST /api/vehiculos "'{\"marca\":\"\",\"anio\":1800}'"
   ej req GET /api/vehiculos/68c000000000000000000099
   ej req DELETE "/api/vehiculos/$ID"
   nota "Repuestos (inventory-service vía gateway) — lock Redis del TP2"
   ej req GET /api/repuestos
-  ej req POST "/api/repuestos/$REP_PASTILLAS/descontar" "'{\"cantidad\":1}'"
+  ej req POST "/api/repuestos/$REP_PASTILLAS/descontar" "'{\"cantidad\":1,\"ordenId\":\"6730a1b2c3d4e5f600000001\"}'"
   nota "Carrera sin lock: dos descuentos simultáneos sobre stock 1 → stock -1"
   bash scripts/reset-datos.sh >/dev/null
   ej "(req POST /api/repuestos/$REP_FILTRO/descontar-sin-lock & req POST /api/repuestos/$REP_FILTRO/descontar-sin-lock; wait)"
   ej req GET "/api/repuestos/$REP_FILTRO"
   nota "Con lock: uno 200, el otro 409 (recurso ocupado) → stock 0"
   bash scripts/reset-datos.sh >/dev/null
-  ej "(req POST /api/repuestos/$REP_FILTRO/descontar & sleep 0.3; req POST /api/repuestos/$REP_FILTRO/descontar; wait)"
+  ej "(req POST /api/repuestos/$REP_FILTRO/descontar '{\"ordenId\":\"6730a1b2c3d4e5f600000002\"}' & sleep 0.3; req POST /api/repuestos/$REP_FILTRO/descontar '{\"ordenId\":\"6730a1b2c3d4e5f600000003\"}'; wait)"
   ej req GET "/api/repuestos/$REP_FILTRO"
 fi
 
@@ -168,14 +176,14 @@ fi
 
 # ------------------------------------------------------------------ 07 persistencia
 if seccion "07-persistencia"; then
-  curl -s -X DELETE "$GW/api/vehiculos/$(curl -s "$GW/api/vehiculos" | grep -o '"id":"[^"]*","marca":"Peugeot"' | head -1 | cut -d'"' -f4)" >/dev/null 2>&1
-  ej req POST /api/vehiculos "'{\"marca\":\"Peugeot\",\"modelo\":\"208\",\"anio\":2023,\"patente\":\"AF208PP\",\"kilometraje\":5000}'"
+  docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehiculos.deleteMany({patente: "AF208PP"})' >/dev/null
+  ej req POST /api/vehiculos "'{\"marca\":\"Peugeot\",\"modelo\":\"208\",\"anio\":2023,\"patente\":\"AF208PP\",\"kilometraje\":5000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}'"
   nota "docker compose down (SIN -v): se eliminan los contenedores, los volúmenes quedan"
   ej "docker compose down 2>&1 | tail -n 3"
   ej "docker volume ls --filter name=torque --format '{{.Name}}'"
   ej "docker compose up -d --wait 2>&1 | tail -n 2"
   ej "curl -s $GW/api/vehiculos | grep -o '\"patente\":\"AF208PP\"[^}]*' || echo 'NO ENCONTRADO'"
-  ej "curl -s $GW/api/ordenes | grep -o -E '\"estado\":\"(CONFIRMADA|FALLIDA|PENDIENTE)\",\"items' | sort | uniq -c"
+  ej "curl -s $GW/api/ordenes | grep -o -E '\"estado\":\"(EN_PROCESO|FINALIZADA|CANCELADA|FALLIDA|PENDIENTE)\",\"items' | sort | uniq -c"
   nota "Contenedores nuevos (otro ID), mismos datos. 'docker compose down -v' sí los borraría."
 fi
 
