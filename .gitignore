@@ -39,3 +39,4 @@ build/
 **/certs/*.key
 **/certs/*.pfx
 **/certs/*.pem
+scripts/.usr.cjs
