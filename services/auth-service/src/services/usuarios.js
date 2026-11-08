@@ -5,6 +5,7 @@ const logger = require("../config/logger");
 const Usuario = require("../models/usuario");
 const { ErrorHttp, invalido } = require("../utils/errores");
 const { parsearObjectId, esObjetoJson } = require("../utils/ids");
+const sesiones = require("./sesiones");
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // bcrypt solo usa los primeros 72 bytes: se limita para que no haya contraseñas
@@ -43,10 +44,11 @@ function validarPassword(password, errores) {
   }
 }
 
-// --- Registro (público) -----------------------------------------------------
-// Siempre crea un MECANICO: el rol NO lo elige el cliente. Un ADMIN lo puede
-// promover después con PATCH /api/auth/usuarios/:id.
-async function registrar(body) {
+// --- Alta de usuarios (ADMIN, requisito 1) ----------------------------------
+// El alta es ADMINISTRADA: no hay registro abierto. La hace un ADMIN (el dueño
+// del taller da de alta a sus mecánicos). Por defecto crea un MECANICO; el
+// ADMIN puede indicar rol ADMIN para sumar otro administrador.
+async function crearUsuario(body, admin) {
   if (!esObjetoJson(body)) throw invalido(["El body debe ser un objeto JSON."]);
   const errores = [];
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
@@ -54,9 +56,8 @@ async function registrar(body) {
   const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
   if (nombre.length < 2 || nombre.length > 60) errores.push("nombre es obligatorio (2 a 60 caracteres).");
   validarPassword(body.password, errores);
-  if (body.rol !== undefined || body.roles !== undefined) {
-    errores.push("El rol no se elige al registrarse: todo usuario nuevo es MECANICO.");
-  }
+  const rol = body.rol === undefined ? "MECANICO" : body.rol;
+  if (!Usuario.ROLES.includes(rol)) errores.push(`rol debe ser uno de: ${Usuario.ROLES.join(", ")}.`);
   if (errores.length) throw invalido(errores);
 
   if (await Usuario.exists({ email })) {
@@ -65,13 +66,13 @@ async function registrar(body) {
   const passwordHash = await bcrypt.hash(body.password, config.bcryptRounds);
   let doc;
   try {
-    doc = await Usuario.create({ email, nombre, passwordHash, rol: "MECANICO" });
+    doc = await Usuario.create({ email, nombre, passwordHash, rol });
   } catch (err) {
-    // Carrera entre dos registros iguales: lo resuelve el índice único.
+    // Carrera entre dos altas iguales: lo resuelve el índice único.
     if (err.code === 11000) throw new ErrorHttp(409, "Conflicto de integridad.", ["Ya existe un usuario con ese email."]);
     throw err;
   }
-  logger.info(`Usuario registrado sub=${doc._id} email=${enmascarar(email)} rol=${doc.rol}`);
+  logger.info(`Usuario creado sub=${doc._id} email=${enmascarar(email)} rol=${doc.rol} por sub=${admin.id}`);
   return serializar(doc);
 }
 
@@ -100,8 +101,16 @@ async function login(body, requestId) {
     throw new ErrorHttp(403, "Cuenta deshabilitada.", ["Pedile a un administrador que la reactive."]);
   }
 
-  // Claims mínimos: identidad (sub) y rol. Nada de email, nombre ni hash.
-  const accessToken = jwt.sign({ rol: usuario.rol }, config.jwt.secret, {
+  const sesion = await sesiones.abrir(usuario);
+  const acceso = emitirAccessToken(usuario, sesion.id);
+  logger.info(`Login OK sub=${usuario._id} rol=${usuario.rol} sesion=${sesion.id} vence=${acceso.venceEn} rid=${requestId}`);
+  return { ...acceso.respuesta, ...sesion.respuesta, usuario: serializar(usuario) };
+}
+
+// Access token: JWT HS256 corto. Claims mínimos: identidad (sub), rol y la
+// sesión (sid) que lo emitió. Nada de email, nombre ni hash.
+function emitirAccessToken(usuario, sesionId) {
+  const accessToken = jwt.sign({ rol: usuario.rol, sid: sesionId }, config.jwt.secret, {
     algorithm: "HS256",
     subject: String(usuario._id),
     issuer: config.jwt.issuer,
@@ -109,13 +118,42 @@ async function login(body, requestId) {
     expiresIn: config.jwt.expiresIn,
   });
   const { iat, exp } = jwt.decode(accessToken);
-  logger.info(`Login OK sub=${usuario._id} rol=${usuario.rol} vence=${new Date(exp * 1000).toISOString()} rid=${requestId}`);
   return {
-    accessToken,
-    tokenType: "Bearer",
-    expiresIn: exp - iat,
-    usuario: serializar(usuario),
+    venceEn: new Date(exp * 1000).toISOString(),
+    respuesta: { accessToken, tokenType: "Bearer", expiresIn: exp - iat },
   };
+}
+
+// --- Renovación (público: se autentica con el refresh token) ---------------
+// Mientras la aplicación se usa, el cliente pide un access token nuevo antes de
+// que venza el actual. Cada renovación rota el refresh token y corre el plazo
+// de inactividad. Se vuelve a leer el usuario: si lo deshabilitaron o le
+// cambiaron el rol, el token nuevo lo refleja (o no se emite).
+async function renovar(body, requestId) {
+  if (!esObjetoJson(body) || typeof body.refreshToken !== "string" || !body.refreshToken) {
+    throw invalido(["refreshToken es obligatorio."]);
+  }
+  const sesion = await sesiones.rotar(body.refreshToken, requestId);
+  const usuario = await Usuario.findById(sesion.usuarioId);
+  if (!usuario || !usuario.activo) {
+    await sesiones.revocar(sesion.id, "usuario_deshabilitado");
+    throw new ErrorHttp(401, "Sesión no válida.", ["La cuenta fue deshabilitada."]);
+  }
+  const acceso = emitirAccessToken(usuario, sesion.id);
+  logger.info(`Sesión renovada sub=${usuario._id} sesion=${sesion.id} renovaciones=${sesion.renovaciones} vence=${acceso.venceEn} rid=${requestId}`);
+  return { ...acceso.respuesta, ...sesion.respuesta };
+}
+
+// --- Cierre de sesión -------------------------------------------------------
+// Revoca la renovación: el refresh token deja de servir. El access token que ya
+// se emitió sigue siendo válido hasta su vencimiento (≤ 5 min): los servicios
+// lo verifican solo con la firma, sin consultar a auth-service.
+async function cerrarSesion(body, requestId) {
+  if (!esObjetoJson(body) || typeof body.refreshToken !== "string" || !body.refreshToken) {
+    throw invalido(["refreshToken es obligatorio."]);
+  }
+  const revocada = await sesiones.revocarPorToken(body.refreshToken, "logout");
+  logger.info(`Logout ${revocada ? `sesion=${revocada}` : "(token desconocido o ya revocado)"} rid=${requestId}`);
 }
 
 // --- Perfil propio (autenticado) --------------------------------------------
@@ -154,6 +192,8 @@ async function actualizar(idCrudo, body, admin) {
 
   const doc = await Usuario.findByIdAndUpdate(id, cambios, { new: true });
   if (!doc) throw new ErrorHttp(404, "Usuario no encontrado.");
+  // Deshabilitar corta también la renovación de todas sus sesiones abiertas.
+  if (cambios.activo === false) await sesiones.revocarDeUsuario(id, "usuario_deshabilitado");
   logger.info(`Usuario sub=${doc._id} actualizado por sub=${admin.id}: ${JSON.stringify(cambios)}`);
   return serializar(doc);
 }
@@ -178,4 +218,4 @@ async function crearAdminInicial() {
   logger.info(`Administrador inicial creado (${enmascarar(email)}).`);
 }
 
-module.exports = { registrar, login, perfil, listar, actualizar, crearAdminInicial };
+module.exports = { crearUsuario, login, renovar, cerrarSesion, perfil, listar, actualizar, crearAdminInicial };
