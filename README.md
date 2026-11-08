@@ -8,7 +8,8 @@ Es un repositorio **único y evolutivo**: no se crea un repo nuevo por entrega, 
 |---|---|---|
 | TP5 | Análisis y diseño de microservicios | `docs/arquitectura.md`, `docs/01…03`, `docs/diagrama-arquitectura.md` |
 | TP6 | Implementación de los microservicios + Docker / Docker Compose | `services/`, `docker-compose.yml`, [`docs/tp6/`](docs/tp6/README.md) |
-| **TP7** | **Autenticación y autorización con JWT (auth-service, roles, propiedad)** | `services/auth-service/`, [`docs/tp7/`](docs/tp7/README.md), [§ Seguridad](#seguridad-tp7) |
+| TP7 | Autenticación y autorización con JWT (auth-service, roles, propiedad) | `services/auth-service/`, [`docs/tp7/`](docs/tp7/README.md), [§ Seguridad](#seguridad-tp7) |
+| **Correcciones** | **Requisitos redefinidos tras la primera revisión:** alta administrada, sesión renovable, vehículos con dueño y baja lógica, inventario con movimientos, reposición, cancelación y estados, laboratorio por variable, métricas | [`docs/correcciones/`](docs/correcciones/README.md), [§ Correcciones](#correcciones-de-la-primera-revisión) |
 
 ## Integrantes
 
@@ -59,10 +60,10 @@ flowchart LR
 | Servicio | Responsabilidad | Datos propios | Habla con |
 |---|---|---|---|
 | `api-gateway` | Punto de entrada único: HTTPS, enrutamiento por prefijo, Swagger agregado. Reenvía `Authorization` (no valida) | — | los 4 servicios |
-| `auth-service` (TP7) | **Identidad**: registro, login, bcrypt, emisión de JWT, administración de usuarios | `auth-db` → `usuarios` | — |
-| `vehicles-service` | Parque de vehículos: CRUD y patente única. Valida JWT | `vehicles-db` → `vehiculos` | — |
-| `inventory-service` | Stock de repuestos y descuento con lock Redis. Valida JWT | `inventory-db` → `repuestos` · `redis` (locks) | — |
-| `workorders-service` | Órdenes de trabajo: valida el vehículo y descuenta repuestos. Valida JWT, propaga el token y aplica propiedad | `workorders-db` → `ordenes` | vehicles, inventory |
+| `auth-service` (TP7) | **Identidad**: alta administrada, login, sesión renovable (refresh token), bcrypt, emisión de JWT, administración de usuarios | `auth-db` → `usuarios`, `sesiones` | — |
+| `vehicles-service` | Parque de vehículos: alta con dueño, patente única (duplicado detectado), baja lógica. Valida JWT | `vehicles-db` → `vehiculos` | — |
+| `inventory-service` | Stock de repuestos: alta, ingreso, ajuste, descuento con lock Redis, reposición y **libro de movimientos**. Valida JWT | `inventory-db` → `repuestos`, `movimientos` · `redis` (locks) | — |
+| `workorders-service` | Órdenes de trabajo: ciclo de vida (en proceso, finalizada, cancelada, fallida), descuenta y repone repuestos, historial por vehículo. Valida JWT, propaga el token y aplica propiedad | `workorders-db` → `ordenes` | vehicles, inventory |
 
 Ningún servicio accede a la base de otro (tampoco a la de usuarios). Detalle: [TP6 Hito 1](docs/tp6/01-plan-implementacion.md) · [TP7 Hito 1](docs/tp7/01-plan-implementacion.md).
 
@@ -127,6 +128,7 @@ Solo el gateway publica puertos hacia la PC:
 | **Swagger** (los 4 contratos, con selector) | `http://localhost:3000/api-docs` |
 | Salud del gateway | `http://localhost:3000/health` |
 | Salud de todos los servicios | `http://localhost:3000/health/servicios` |
+| Métricas (gateway / todos los servicios) | `http://localhost:3000/metrics` · `http://localhost:3000/metrics/servicios` |
 
 Dentro de la red de Compose cada contenedor se alcanza por **nombre de servicio + puerto interno**. Nunca se usa `localhost` ni una IP fija:
 
@@ -207,12 +209,13 @@ docker compose logs | grep <rid>
 | `vehicles-service` | `/api/vehiculos` → 503. Las órdenes nuevas → 503 (no se puede validar el vehículo). |
 | `vehicles-db` / `inventory-db` / `workorders-db` | el servicio dueño responde 503 en sus operaciones y `/health` = 503. Se recupera solo al volver la base. |
 | `redis` | `POST /api/repuestos/:id/descontar` → 503. Las consultas de stock siguen. `/health` de inventory = `degraded`. |
+| `inventory-service` al cancelar | La orden se cancela igual; la reposición queda `PENDIENTE` y se reintenta con `POST /api/ordenes/:id/reponer` (el descuento sigue en el libro de movimientos). |
 
 Los errores **funcionales** remotos (404, 409) no se convierten en 503: se propagan. Tabla completa: [semantica-errores.md](docs/tp6/semantica-errores.md).
 
 ## 10. Fallo parcial (operación distribuida)
 
-Crear una orden con varios repuestos descuenta stock **ítem por ítem** en inventory-service. Si el ítem 2 falla (sin stock, o timeout), el ítem 1 ya quedó descontado. La orden queda `FALLIDA` con el estado de cada ítem y `requiereCompensacion: true`, y el log marca `FALLO PARCIAL`. Un timeout deja el ítem `INCIERTO`, porque inventory pudo haberlo aplicado.
+Crear una orden con varios repuestos descuenta stock **ítem por ítem** en inventory-service, cada descuento ligado al `ordenId`. Si el ítem 2 falla (sin stock, o timeout), el ítem 1 ya quedó descontado: la orden queda `FALLIDA` y **lo descontado vuelve solo al stock** con un contramovimiento `REPOSICION` de la misma orden (no un rollback). Un timeout deja el ítem `INCIERTO`; la reposición lo resuelve consultando el libro de movimientos. Detalle: [docs/correcciones §3.2–3.3](docs/correcciones/README.md#32-libro-de-movimientos-y-reposición-requisitos-9-y-10).
 
 Análisis completo, cambios de estado, qué pasa en cada etapa y qué haría falta para compensar: [fallo-parcial.md](docs/tp6/fallo-parcial.md).
 
@@ -223,16 +226,19 @@ Análisis completo, cambios de estado, qué pasa en cada etapa y qué haría fal
 | Vehículos | Corolla `68c000000000000000000001` · Ranger `…002` · Gol `…003` |
 | Repuestos | Filtro `68c000000000000000000011` (stock 1) · Pastillas `…012` (4) · Bujías `…013` (8) |
 | Órdenes | ninguna |
-| Usuarios (TP7) | solo el admin inicial (`ADMIN_EMAIL` / `ADMIN_PASSWORD` de `.env`). `pruebas-tp7.sh` registra `mecanico1@torque.local` y `mecanico2@torque.local` |
+| Vehículos (dueño) | Laura Gómez · Martín Sosa · Carla Ruiz |
+| Movimientos | un INGRESO "Stock inicial (semilla)" por repuesto |
+| Usuarios | solo el admin inicial (`ADMIN_EMAIL` / `ADMIN_PASSWORD` de `.env`). Las pruebas dan de alta (como ADMIN) `mecanico1@torque.local` y `mecanico2@torque.local` |
 
 ```bash
-bash scripts/reset-datos.sh          # solo restaura el stock (POST /api/repuestos/reiniciar)
+bash scripts/reset-datos.sh          # restaura stock y movimientos (POST /api/repuestos/reiniciar, requiere LAB_ENDPOINTS=true)
 bash scripts/reset-datos.sh --todo   # down -v + up: todo vuelve a la semilla
 ```
 
 ## 12. Pruebas
 
 ```bash
+bash scripts/pruebas-correcciones.sh        # correcciones de la 1ª revisión. Salida en docs/correcciones/evidencias/
 bash scripts/pruebas-tp7.sh                 # TP7: seguridad, escenarios A–L (+ extras). Salida en docs/tp7/evidencias/
 bash scripts/pruebas-tp6.sh                 # TP6 (≈ 3 min), corre como ADMIN. Deja la salida en docs/tp6/evidencias/
 bash scripts/pruebas-tp6.sh 08-fallo        # solo una sección
@@ -256,7 +262,9 @@ bash scripts/prueba-local.sh                # mismos servicios con Node, sin Doc
 | Configuración por entorno | `13-ejecucion-local` |
 | Startup / disponibilidad | `01` (imagen sola sin base → 503 y reintento) · `08` (base caída y recuperación) |
 
-Índice de evidencias: [TP6](docs/tp6/README.md) · [TP7 (escenarios A–L)](docs/tp7/README.md#evidencias-evidencias).
+Índice de evidencias: [TP6](docs/tp6/README.md) · [TP7 (escenarios A–L)](docs/tp7/README.md#evidencias-evidencias) · [Correcciones](docs/correcciones/README.md).
+
+Los tres scripts usan los endpoints de laboratorio y fuerzan `LAB_ENDPOINTS=true`. Por defecto están apagados.
 
 ## Seguridad (TP7)
 
@@ -274,19 +282,22 @@ Detalle y decisiones: [docs/tp7/](docs/tp7/README.md).
 
 - **`auth-service`** es el único responsable de identidad: guarda usuarios con contraseña **bcrypt** (costo 12) en su propia base y emite los JWT. Ningún otro servicio guarda usuarios ni compara contraseñas.
 - **Roles:** `MECANICO` (empleado del taller) y `ADMIN` (jefe de taller).
-- El registro público siempre crea `MECANICO`. El primer `ADMIN` se crea al arrancar con `ADMIN_EMAIL` / `ADMIN_PASSWORD` del `.env`. Un ADMIN puede promover o deshabilitar usuarios (`PATCH /api/auth/usuarios/:id`).
+- **Alta administrada** (corrección del requisito 1): no hay registro abierto. El primer `ADMIN` se crea al arrancar con `ADMIN_EMAIL` / `ADMIN_PASSWORD` del `.env`, y es quien da de alta a los mecánicos (`POST /api/auth/usuarios`). Un ADMIN puede promover o deshabilitar usuarios (`PATCH /api/auth/usuarios/:id`); deshabilitar revoca sus sesiones.
 
-| Endpoint | Público | MECANICO | ADMIN |
+Matriz de acceso completa (actualizada con las correcciones): [docs/correcciones §2](docs/correcciones/README.md#2-matriz-de-acceso-actualizada). Resumen:
+
+| Endpoint | Sin token | MECANICO | ADMIN |
 |---|---|---|---|
-| `POST /api/auth/register` · `/login` | ✔ | ✔ | ✔ |
-| `GET /api/repuestos…` (catálogo) | ✔ | ✔ | ✔ |
+| `POST /api/auth/login` · `/refresh` · `/logout` | ✔ | ✔ | ✔ |
+| `POST/GET/PATCH /api/auth/usuarios…` | 401 | 403 | ✔ |
+| `GET /api/repuestos…` (stock, movimientos) | 401 | ✔ | ✔ |
+| alta, ingreso y ajuste de repuestos | 401 | 403 | ✔ |
 | `GET/POST/PUT /api/vehiculos…` | 401 | ✔ | ✔ |
-| `DELETE /api/vehiculos/:id` | 401 | 403 | ✔ |
-| `POST /api/repuestos/:id/descontar` | 401 | ✔ | ✔ |
-| `reiniciar` · `lock` · `descontar-sin-lock` (laboratorio) | 401 | 403 | ✔ |
+| `DELETE /api/vehiculos/:id` (baja lógica) | 401 | 403 | ✔ |
+| `reiniciar` · `lock` · `descontar-sin-lock` | 404 salvo `LAB_ENDPOINTS=true` (entonces 401 / 403 / ✔) | | |
 | `POST /api/ordenes` | 401 | ✔ | ✔ |
-| `GET /api/ordenes…` | 401 | **solo las propias** (ajena → 403) | todas |
-| `GET/PATCH /api/auth/usuarios…` | 401 | 403 | ✔ |
+| `GET/PATCH /api/ordenes/:id` · cancelar · finalizar | 401 | **solo las propias** (ajena → 403) | todas |
+| `GET /api/ordenes/vehiculo/:id` (historial) | 401 | todas, solo lectura | todas |
 
 ### Variables de seguridad
 
@@ -295,28 +306,40 @@ Detalle y decisiones: [docs/tp7/](docs/tp7/README.md).
 | `JWT_SECRET` | **sí** | — | clave HS256 (≥ 32 caracteres). La misma para firmar (auth) y verificar (vehicles, inventory, workorders) |
 | `ADMIN_PASSWORD` | **sí** | — | contraseña del admin inicial |
 | `ADMIN_EMAIL` | no | `admin@torque.local` | email del admin inicial |
-| `JWT_EXPIRES_IN` | no | `15m` | vigencia del access token |
+| `JWT_EXPIRES_IN` | no | `5m` | vigencia del access token (se renueva con `/refresh`) |
+| `SESSION_IDLE` | no | `15m` | la sesión vence si no se renueva en este lapso |
+| `LAB_ENDPOINTS` | no | `false` | habilita los endpoints de laboratorio de inventory |
 | `BCRYPT_ROUNDS` | no | `12` | costo de bcrypt |
 
 `bash scripts/generar-env.sh` crea `.env` (no versionado) con valores aleatorios
 para las dos obligatorias. Sin ellas, `docker compose up` no arranca y muestra
 qué falta.
 
-### Registrar, loguearse y usar el token
+### Dar de alta, loguearse, usar y renovar el token
 
 ```bash
-# 1. Registrar un mecánico
-curl -X POST http://localhost:3000/api/auth/register -H 'content-type: application/json' \
+J='content-type: application/json'
+login() { curl -s -X POST http://localhost:3000/api/auth/login -H "$J" -d "{\"email\":\"$1\",\"password\":\"$2\"}"; }
+set -a; . ./.env; set +a
+
+# 1. El ADMIN da de alta un mecánico (alta administrada)
+ADMIN=$(login "$ADMIN_EMAIL" "$ADMIN_PASSWORD" | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken')
+curl -X POST http://localhost:3000/api/auth/usuarios -H "$J" -H "Authorization: Bearer $ADMIN" \
   -d '{"email":"juan@torque.local","nombre":"Juan Pérez","password":"una-clave-segura"}'
 
-# 2. Login → accessToken (JWT, vence en JWT_EXPIRES_IN)
-TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login -H 'content-type: application/json' \
-  -d '{"email":"juan@torque.local","password":"una-clave-segura"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken')
+# 2. Login del mecánico → accessToken (5 min) + refreshToken
+R=$(login juan@torque.local una-clave-segura)
+TOKEN=$(echo "$R" | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken')
+REFRESH=$(echo "$R" | node -pe 'JSON.parse(require("fs").readFileSync(0)).refreshToken')
 
 # 3. Usarlo en un endpoint protegido
 curl http://localhost:3000/api/vehiculos -H "Authorization: Bearer $TOKEN"
 
-# Admin: mismas llamadas con ADMIN_EMAIL / ADMIN_PASSWORD de .env
+# 4. Antes de que venza: renovar (devuelve un par nuevo; el refresh anterior deja de servir)
+curl -X POST http://localhost:3000/api/auth/refresh -H "$J" -d "{\"refreshToken\":\"$REFRESH\"}"
+
+# 5. Cerrar sesión (revoca la renovación)
+curl -X POST http://localhost:3000/api/auth/logout -H "$J" -d "{\"refreshToken\":\"<el último refresh>\"}"
 ```
 
 **Swagger** (`http://localhost:3000/api-docs`): elegir *auth-service (login)* en
@@ -326,14 +349,30 @@ operación muestra el candado, el rol requerido y sus respuestas 401/403.
 
 ### Validación y propagación del JWT
 
-- Claims: `sub`, `rol`, `iss`, `aud`, `iat`, `exp`. Sin email, nombre, contraseña ni hash.
+- Claims: `sub`, `rol`, `sid` (sesión), `iss`, `aud`, `iat`, `exp`. Sin email, nombre, contraseña ni hash.
 - Cada servicio valida el token **localmente** (`src/middleware/auth.js`: HS256 explícito, firma, emisor, audiencia y vencimiento), sin consultar la base de usuarios. Respuestas: **401** sin identidad válida, **403** con identidad válida sin permiso.
 - El **gateway no valida**: reenvía `Authorization` tal cual. Así ningún servicio queda abierto si se le llega desde adentro de la red.
 - **Propagación:** al crear una orden, workorders reenvía el mismo token del usuario a vehicles e inventory, y cada uno lo vuelve a validar. La orden queda a nombre del `sub` (`creadaPor`).
-- Si **auth-service se cae**, los tokens ya emitidos siguen valiendo hasta su `exp`. Solo fallan login y registro (503).
+- Si **auth-service se cae**, los tokens ya emitidos siguen valiendo hasta su `exp`. Solo fallan login, renovación y altas (503).
 
 Pruebas: `bash scripts/pruebas-tp7.sh` (escenarios A–L del §19 + auth caído,
 Swagger y secretos). Evidencias e índice: [docs/tp7/README.md](docs/tp7/README.md).
+
+## Correcciones de la primera revisión
+
+Detalle requisito por requisito, decisiones y evidencias: **[docs/correcciones/](docs/correcciones/README.md)**.
+
+| # | Corrección | Cómo se prueba |
+|---|---|---|
+| 1 | Alta de usuarios administrada (`POST /api/auth/usuarios`, ADMIN) | `pruebas-correcciones.sh 01-` |
+| 3 | Access token de 5 min + refresh rotativo, vence a los 15 min sin uso, logout | `02-` |
+| 4 | Vehículo con dueño, duplicado detectado (409 + existente), baja lógica, historial | `03-` · `09-` |
+| 5 | Stock solo para usuarios autenticados | `04-` |
+| 6 · 7 · 9 | Alta de repuestos, ingreso, ajuste con motivo, libro de movimientos | `05-` |
+| 10 · 14 | Cancelación (dueño o ADMIN, motivo/quién/cuándo) y reposición automática con contramovimiento | `06-` · `07-` · `11-` |
+| 13 | Estados PENDIENTE, EN_PROCESO, FINALIZADA, CANCELADA, FALLIDA | `08-` |
+| 16 | Endpoints de laboratorio solo con `LAB_ENDPOINTS=true` | `10-` |
+| NF | `GET /metrics` por servicio y `/metrics/servicios` en el gateway | `12-` |
 
 ## 13. Estructura del repositorio
 
@@ -347,8 +386,9 @@ torque/
 │   ├── vehicles-service/       ídem
 │   ├── inventory-service/      ídem
 │   └── workorders-service/     ídem
-├── scripts/                    generar-env.sh · pruebas-tp7.sh · pruebas-tp6.sh · prueba-local.sh · reset-datos.sh
+├── scripts/                    generar-env.sh · pruebas-correcciones.sh · pruebas-tp7.sh · pruebas-tp6.sh · prueba-local.sh · reset-datos.sh
 ├── docs/
+│   ├── correcciones/           requisitos redefinidos tras la 1ª revisión: decisiones, matriz de acceso, evidencias
 │   ├── tp7/                    plan de seguridad, 401/403, secretos, propagación, evidencias
 │   ├── tp6/                    plan, casos de uso, errores, fallo parcial, evidencias
 │   └── (TP5)                   arquitectura, inventario, acoplamientos, diagrama
@@ -360,4 +400,4 @@ Cada servicio separa `routes/` → `controllers/` → `services/` (negocio) → 
 ## Flujo de Git
 
 - Rama principal: `main`. Todo entra por **Pull Request** desde ramas `feature/…`, `docs/…` o `fix/…`.
-- Entregas: tags `tp6-entrega` y `tp7-entrega` sobre el `main` integrado y probado.
+- Entregas: tags `tp6-entrega`, `tp7-entrega` y `correcciones-rev1` sobre el `main` integrado y probado.

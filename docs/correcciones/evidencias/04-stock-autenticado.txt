@@ -1,0 +1,16 @@
+# Requisito 5: el stock es información interna → la consulta requiere estar autenticado
+
+$ pedir '' GET /api/repuestos
+{"error":"No autenticado.","detalles":["Falta el header Authorization: Bearer <token>."]}
+HTTP 401
+
+
+$ pedir '' GET /api/repuestos/68c000000000000000000013
+{"error":"No autenticado.","detalles":["Falta el header Authorization: Bearer <token>."]}
+HTTP 401
+
+
+$ pedir "$T_MEC1" GET /api/repuestos/$REP_BUJIAS
+{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8}
+HTTP 200
+
