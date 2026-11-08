@@ -2,6 +2,7 @@ const express = require("express");
 const { randomUUID } = require("crypto");
 const config = require("./config");
 const logger = require("./config/logger");
+const metricas = require("./config/metricas");
 const rutas = require("./routes");
 
 const app = express();
@@ -12,6 +13,9 @@ app.use("/api", express.raw({ type: () => true, limit: "1mb" }));
 
 // Request id: se genera acá y viaja a todos los servicios (x-request-id), así
 // una operación se sigue en `docker compose logs` de punta a punta.
+// Métricas del borde: pedidos, errores y tiempos por prefijo (GET /metrics).
+app.use(metricas.middleware);
+
 app.use((req, res, next) => {
   const inicio = Date.now();
   req.id = req.get("x-request-id") || randomUUID();
@@ -28,12 +32,13 @@ app.use((req, res, next) => {
 
 app.get("/", (req, res) => {
   res.json({
-    mensaje: "torque — api-gateway (TP7 Programación Distribuida)",
+    mensaje: "torque — api-gateway (Programación Distribuida)",
     protocolo: req.protocol,
     recursos: ["/api/vehiculos", "/api/repuestos", "/api/ordenes", "/api/auth"],
     login: "POST /api/auth/login",
     docs: "/api-docs",
     salud: ["/health", "/health/servicios"],
+    metricas: ["/metrics", "/metrics/servicios"],
   });
 });
 

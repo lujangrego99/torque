@@ -3,6 +3,7 @@ const swaggerUi = require("swagger-ui-express");
 const { randomUUID } = require("crypto");
 const config = require("./config");
 const logger = require("./config/logger");
+const metricas = require("./config/metricas");
 const { conectado } = require("./config/mongo");
 const { ErrorHttp, esBaseNoDisponible } = require("./utils/errores");
 const spec = require("./docs/openapi");
@@ -11,6 +12,9 @@ const authRouter = require("./routes/auth");
 const app = express();
 
 app.use(express.json());
+
+// Métricas por proceso: pedidos, errores y tiempos (GET /metrics).
+app.use(metricas.middleware);
 
 // Log por request: método, ruta, status, duración y request id (lo propaga el gateway).
 app.use((req, res, next) => {
@@ -36,6 +40,9 @@ app.get("/health", (req, res) => {
     dependencias: { mongo },
   });
 });
+
+// Observabilidad: interno de la red backend (el gateway lo agrega en /metrics/servicios).
+app.get("/metrics", metricas.endpoint(config.serviceName));
 
 app.get("/api-docs.json", (req, res) => res.json(spec));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(spec, { customSiteTitle: "auth-service — Swagger" }));

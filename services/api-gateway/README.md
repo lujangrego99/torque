@@ -11,9 +11,11 @@ No tiene datos ni reglas de negocio. TP6/TP7 · torque · responsable: Gregorio 
 | `/api/vehiculos*` | `vehicles-service` |
 | `/api/repuestos*` | `inventory-service` |
 | `/api/ordenes*` | `workorders-service` |
-| `/api/auth*` | `auth-service` (TP7: login, registro, usuarios) |
+| `/api/auth*` | `auth-service` (login, renovación, logout, alta y administración de usuarios) |
 | `GET /health` | salud del gateway: `{service:"api-gateway", status:"ok"}` |
 | `GET /health/servicios` | salud agregada: consulta `/health` de cada servicio (200 si todos ok, 503 si alguno no) |
+| `GET /metrics` | métricas del gateway: pedidos, errores y tiempos por prefijo (JSON, o `?formato=prometheus`) |
+| `GET /metrics/servicios` | métricas de todos: las del gateway + `/metrics` de cada servicio, con un `resumen` ordenado por p95 (el más lento primero) |
 | `GET /api-docs` | Swagger UI con selector: vehicles · inventory · workorders · auth · gateway (el token de **Authorize** se conserva al cambiar de servicio) |
 | `GET /api-docs/<servicio>.json` | spec real de cada servicio (lo trae de su `/api-docs.json`) |
 
