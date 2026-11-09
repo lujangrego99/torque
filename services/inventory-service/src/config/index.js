@@ -29,6 +29,9 @@ module.exports = {
   // Retardo artificial dentro de la sección crítica para ver la carrera (TP2).
   demoDelayMs: entero(process.env.DEMO_DELAY_MS, 0),
   seedOnStart: process.env.SEED_ON_START !== "false",
+  // Endpoints de laboratorio (reiniciar, lock, descontar-sin-lock). Apagados por
+  // defecto: solo existen si se pide explícitamente LAB_ENDPOINTS=true.
+  labEndpoints: process.env.LAB_ENDPOINTS === "true",
   jwt: {
     secret: jwtSecret,
     issuer: process.env.JWT_ISSUER || "torque-auth",
