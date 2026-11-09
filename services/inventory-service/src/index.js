@@ -4,6 +4,7 @@ const { conectarConReintentos } = require("./config/mongo");
 const redis = require("./config/redis");
 const { seedSiVacio } = require("./models/seed");
 const Repuesto = require("./models/repuesto");
+const Movimiento = require("./models/movimiento");
 const app = require("./app");
 
 if (config.demoDelayMs > 0 && config.demoDelayMs >= config.lockTtlMs) {
@@ -16,7 +17,7 @@ if (config.demoDelayMs > 0 && config.demoDelayMs >= config.lockTtlMs) {
 // y Redis se conectan en segundo plano con reintentos.
 const server = app.listen(config.port, () => {
   logger.info(
-    `Escuchando en el puerto ${config.port} · Swagger en /api-docs · salud en /health · lock TTL=${config.lockTtlMs} ms · delay demo=${config.demoDelayMs} ms`
+    `Escuchando en el puerto ${config.port} · Swagger en /api-docs · salud en /health · lock TTL=${config.lockTtlMs} ms · delay demo=${config.demoDelayMs} ms · laboratorio=${config.labEndpoints ? "ACTIVO" : "apagado"}`
   );
 });
 
@@ -24,7 +25,7 @@ redis.conectar();
 
 // Con bufferCommands=false los índices (codigo único) se crean después de conectar.
 conectarConReintentos()
-  .then(() => Repuesto.createIndexes())
+  .then(() => Promise.all([Repuesto.createIndexes(), Movimiento.createIndexes()]))
   .then(() => (config.seedOnStart ? seedSiVacio() : null))
   .catch((err) => logger.error(`Fallo al inicializar datos: ${err.message}`));
 
