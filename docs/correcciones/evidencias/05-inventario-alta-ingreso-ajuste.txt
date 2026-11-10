@@ -10,7 +10,7 @@ HTTP 403
 
 
 $ pedir "$T_ADMIN" POST /api/repuestos "{\"nombre\":\"Radiador Corolla\",\"codigo\":\"RAD-COR-001\",\"stock\":2}"
-{"mensaje":"Repuesto creado.","item":{"id":"6af0cd78771c14acca764309","nombre":"Radiador Corolla","codigo":"RAD-COR-001","stock":2},"movimiento":{"id":"6af0cd78771c14acca76430c","fecha":"2026-11-08T19:28:56.117Z","tipo":"INGRESO","repuestoId":"6af0cd78771c14acca764309","codigo":"RAD-COR-001","cantidad":2,"stockAnterior":0,"stockResultante":2,"usuario":"6af0cd46a298f5a83837167a","rol":"ADMIN","ordenId":null,"motivo":"Stock inicial del alta"}}
+{"mensaje":"Repuesto creado.","item":{"id":"6af37acef1f15669dde683e3","nombre":"Radiador Corolla","codigo":"RAD-COR-001","stock":2},"movimiento":{"id":"6af37acef1f15669dde683e6","fecha":"2026-11-10T20:13:02.959Z","tipo":"INGRESO","repuestoId":"6af37acef1f15669dde683e3","codigo":"RAD-COR-001","cantidad":2,"stockAnterior":0,"stockResultante":2,"usuario":"6af37a99fa7aea49723c3257","rol":"ADMIN","ordenId":null,"motivo":"Stock inicial del alta"}}
 HTTP 201
 
 
@@ -27,7 +27,7 @@ HTTP 403
 $ ver "$T_ADMIN" POST /api/repuestos/$REP_RAD/ingreso '{"cantidad":5,"motivo":"Remito 0001-00012345"}' '({item:j.item, movimiento:{tipo:j.movimiento.tipo,cantidad:j.movimiento.cantidad,stock:j.movimiento.stockAnterior+" → "+j.movimiento.stockResultante,motivo:j.movimiento.motivo}})'
 {
   "item": {
-    "id": "6af0cd78771c14acca764309",
+    "id": "6af37acef1f15669dde683e3",
     "nombre": "Radiador Corolla",
     "codigo": "RAD-COR-001",
     "stock": 7
@@ -51,7 +51,7 @@ HTTP 400
 $ ver "$T_ADMIN" POST /api/repuestos/$REP_RAD/ajuste '{"cantidad":-1,"motivo":"Conteo físico: una unidad golpeada"}' '({item:j.item, movimiento:{tipo:j.movimiento.tipo,cantidad:j.movimiento.cantidad,stock:j.movimiento.stockAnterior+" → "+j.movimiento.stockResultante,motivo:j.movimiento.motivo}})'
 {
   "item": {
-    "id": "6af0cd78771c14acca764309",
+    "id": "6af37acef1f15669dde683e3",
     "nombre": "Radiador Corolla",
     "codigo": "RAD-COR-001",
     "stock": 6

@@ -18,7 +18,7 @@ $ ver "$T_MEC1" POST /api/ordenes '{"vehiculoId":"68c000000000000000000002","des
   "reposicion": {
     "estado": "COMPLETA",
     "unidades": 4,
-    "fecha": "2026-11-08T19:29:02.807Z",
+    "fecha": "2026-11-10T20:13:10.334Z",
     "intentos": 1
   },
   "historial": [
@@ -36,14 +36,14 @@ PAS-FRE-001  stock 4
 
 
 $ libro "ordenId=$OF"
-DESCUENTO  BUJ-NGK-001    -4   8 → 4  orden=6af0cd7d0728aa930481856e  usuario=mecanico1 
-REPOSICION BUJ-NGK-001    +4   4 → 8  orden=6af0cd7d0728aa930481856e  usuario=mecanico1  «Orden fallida: http_409»
+DESCUENTO  BUJ-NGK-001    -4   8 → 4  orden=6af37ad5f411666a69e82c09  usuario=mecanico1 
+REPOSICION BUJ-NGK-001    +4   4 → 8  orden=6af37ad5f411666a69e82c09  usuario=mecanico1  «Orden fallida: http_409»
 
 
 $ docker compose logs --no-color --since 20s workorders-service | grep -E 'FALLIDA|reposición' | cut -d'|' -f2- | cut -c1-200
- 2026-11-08T19:28:59.476Z [INFO] [workorders-service] Orden 6af0cd790728aa9304818559: reposición COMPLETA (3 unidades) rid=f77066c2-4659-484c-8223-3f250ee88f03.
- 2026-11-08T19:29:00.725Z [INFO] [workorders-service] Orden 6af0cd7b0728aa9304818566: reposición COMPLETA (2 unidades) rid=5a95b8c0-ece5-4701-a8b8-391e2b3de2e8.
- 2026-11-08T19:29:02.794Z [ERROR] [workorders-service] Orden 6af0cd7d0728aa930481856e FALLIDA en descuento (inventory-service: http_409) rid=49e23d87-fe2e-4985-8146-94e274e4b6d3. FALLO PARCIAL: stock 
- 2026-11-08T19:29:02.808Z [INFO] [workorders-service] Orden 6af0cd7d0728aa930481856e: reposición COMPLETA (4 unidades) rid=49e23d87-fe2e-4985-8146-94e274e4b6d3.
- 2026-11-08T19:29:02.853Z [INFO] [workorders-service] GET /api/ordenes?estado=FALLIDA 200 5ms rid=c99819f3-effe-4731-9079-3f9f9b0d7523
+ 2026-11-10T20:13:06.704Z [INFO] [workorders-service] Orden 6af37ad0f411666a69e82bf4: reposición COMPLETA (3 unidades) rid=2c6827dc-f9db-4ae0-9e6a-a0248d2c0d2c.
+ 2026-11-10T20:13:07.975Z [INFO] [workorders-service] Orden 6af37ad2f411666a69e82c01: reposición COMPLETA (2 unidades) rid=df6468f4-cece-4217-a7e3-a44a1667f305.
+ 2026-11-10T20:13:10.323Z [ERROR] [workorders-service] Orden 6af37ad5f411666a69e82c09 FALLIDA en descuento (inventory-service: http_409) rid=9e01d618-7838-4ed9-bbf7-f75aea03824f. FALLO PARCIAL: stock 
+ 2026-11-10T20:13:10.335Z [INFO] [workorders-service] Orden 6af37ad5f411666a69e82c09: reposición COMPLETA (4 unidades) rid=9e01d618-7838-4ed9-bbf7-f75aea03824f.
+ 2026-11-10T20:13:10.392Z [INFO] [workorders-service] GET /api/ordenes?estado=FALLIDA 200 4ms rid=79831a9d-1ac9-4460-bab8-7a05c15366a5
 

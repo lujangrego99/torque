@@ -19,12 +19,12 @@ HTTP 401
 # ADMIN crea dos mecánicos → 201 (la respuesta no incluye contraseña ni hash)
 
 $ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"$MEC1\",\"nombre\":\"Mecanico Uno\",\"password\":\"$PASS_MEC\"}"
-{"id":"6af0cd4da298f5a838371680","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-08T19:28:13.463Z"}
+{"id":"6af37aa0fa7aea49723c325d","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-10T20:12:16.852Z"}
 HTTP 201
 
 
 $ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"$MEC2\",\"nombre\":\"Mecanico Dos\",\"password\":\"$PASS_MEC\"}"
-{"id":"6af0cd4da298f5a838371683","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-11-08T19:28:13.715Z"}
+{"id":"6af37aa1fa7aea49723c3260","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-11-10T20:12:17.225Z"}
 HTTP 201
 
 # Validación (400) y duplicado, también con otra capitalización (409)
@@ -47,6 +47,6 @@ HTTP 403
 # El mecánico creado por el admin inicia sesión normalmente:
 
 $ pedir "" POST /api/auth/login "{\"email\":\"$MEC1\",\"password\":\"$PASS_MEC\"}"
-{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":300,"refreshToken":"QTpBuyM0I3NVondF…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-08T19:43:14.271Z","usuario":{"id":"6af0cd4da298f5a838371680","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-08T19:28:13.463Z"}}
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"refreshToken":"3mdGxOdl0afWVNi2…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-10T20:27:18.051Z","usuario":{"id":"6af37aa0fa7aea49723c325d","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-10T20:12:16.852Z"}}
 HTTP 200
 
