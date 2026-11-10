@@ -1,11 +1,14 @@
 // Error de negocio con status HTTP. La capa de servicios lo lanza y el
 // controlador / middleware lo traduce a respuesta.
 class ErrorHttp extends Error {
-  constructor(status, error, detalles) {
+  // `extra`: campos adicionales para el cuerpo de la respuesta (p. ej. el
+  // vehículo existente cuando la patente ya está cargada).
+  constructor(status, error, detalles, extra) {
     super(error);
     this.status = status;
     this.error = error;
     this.detalles = detalles;
+    this.extra = extra;
   }
 }
 

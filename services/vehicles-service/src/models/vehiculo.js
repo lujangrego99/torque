@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const ANIO_MINIMO = 1900;
+const TELEFONO = /^(?=(?:\D*\d){6})[0-9+()\s-]{6,20}$/;
 
 function anioMaximo() {
   return new Date().getFullYear() + 1;
@@ -61,8 +62,38 @@ const vehiculoSchema = new mongoose.Schema(
         message: "El campo kilometraje es obligatorio y debe ser un entero mayor o igual a 0.",
       },
     },
+    // Dueño del auto (requisito 4): para avisarle cuando el auto está listo.
+    duenio: {
+      type: new mongoose.Schema(
+        {
+          nombre: {
+            type: String,
+            required: [true, "El nombre del dueño es obligatorio."],
+            trim: true,
+            minlength: [2, "El nombre del dueño debe tener entre 2 y 80 caracteres."],
+            maxlength: [80, "El nombre del dueño debe tener entre 2 y 80 caracteres."],
+          },
+          telefono: {
+            type: String,
+            required: [true, "El teléfono del dueño es obligatorio."],
+            trim: true,
+            match: [TELEFONO, "El teléfono del dueño debe tener entre 6 y 20 caracteres (dígitos, espacios, +, -, paréntesis)."],
+          },
+        },
+        { _id: false }
+      ),
+      required: [true, "Los datos del dueño (duenio.nombre y duenio.telefono) son obligatorios."],
+    },
+    // Baja LÓGICA: el auto no se borra (sus órdenes siguen apuntando a él y se
+    // conserva el historial). Inactivo = no se le pueden crear órdenes nuevas.
+    activo: { type: Boolean, default: true, index: true },
+    baja: {
+      fecha: Date,
+      por: String,
+      motivo: String,
+    },
   },
-  { versionKey: false }
+  { versionKey: false, timestamps: { createdAt: "creadoEn", updatedAt: "actualizadoEn" } }
 );
 
 module.exports = mongoose.model("Vehiculo", vehiculoSchema);
