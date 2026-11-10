@@ -1,0 +1,49 @@
+# El caso que antes quedaba trabado: bujías ya descontadas y sin stock del siguiente repuesto.
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+# Orden: 4 bujías (hay 8) + 2 filtros (hay 1) → el filtro falla → FALLIDA y las bujías se reponen automáticamente
+
+$ ver "$T_MEC1" POST /api/ordenes '{"vehiculoId":"68c000000000000000000002","descripcion":"Service completo","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":4},{"repuestoId":"68c000000000000000000011","cantidad":2}]}' '({estado:j.estado||(j.orden&&j.orden.estado), error:j.error, detalles:j.detalles, items:(j.items||(j.orden&&j.orden.items)||[]).map(i=>i.codigo+" x"+i.cantidad+" "+i.estado), cancelacion:j.cancelacion, reposicion:j.reposicion||(j.orden&&j.orden.reposicion), historial:(j.historial||(j.orden&&j.orden.historial)||[]).map(h=>h.estado+(h.detalle?" («"+h.detalle+"»)":""))})'
+{
+  "estado": "FALLIDA",
+  "error": "No se pudo completar la orden: conflicto de stock.",
+  "items": [
+    "BUJ-NGK-001 x4 REPUESTO",
+    "FIL-ACE-001 x2 RECHAZADO"
+  ],
+  "reposicion": {
+    "estado": "COMPLETA",
+    "unidades": 4,
+    "fecha": "2026-11-08T19:29:02.807Z",
+    "intentos": 1
+  },
+  "historial": [
+    "PENDIENTE («Orden registrada»)",
+    "FALLIDA («inventory-service: http_409»)"
+  ]
+}
+HTTP 409
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+
+$ libro "ordenId=$OF"
+DESCUENTO  BUJ-NGK-001    -4   8 → 4  orden=6af0cd7d0728aa930481856e  usuario=mecanico1 
+REPOSICION BUJ-NGK-001    +4   4 → 8  orden=6af0cd7d0728aa930481856e  usuario=mecanico1  «Orden fallida: http_409»
+
+
+$ docker compose logs --no-color --since 20s workorders-service | grep -E 'FALLIDA|reposición' | cut -d'|' -f2- | cut -c1-200
+ 2026-11-08T19:28:59.476Z [INFO] [workorders-service] Orden 6af0cd790728aa9304818559: reposición COMPLETA (3 unidades) rid=f77066c2-4659-484c-8223-3f250ee88f03.
+ 2026-11-08T19:29:00.725Z [INFO] [workorders-service] Orden 6af0cd7b0728aa9304818566: reposición COMPLETA (2 unidades) rid=5a95b8c0-ece5-4701-a8b8-391e2b3de2e8.
+ 2026-11-08T19:29:02.794Z [ERROR] [workorders-service] Orden 6af0cd7d0728aa930481856e FALLIDA en descuento (inventory-service: http_409) rid=49e23d87-fe2e-4985-8146-94e274e4b6d3. FALLO PARCIAL: stock 
+ 2026-11-08T19:29:02.808Z [INFO] [workorders-service] Orden 6af0cd7d0728aa930481856e: reposición COMPLETA (4 unidades) rid=49e23d87-fe2e-4985-8146-94e274e4b6d3.
+ 2026-11-08T19:29:02.853Z [INFO] [workorders-service] GET /api/ordenes?estado=FALLIDA 200 5ms rid=c99819f3-effe-4731-9079-3f9f9b0d7523
+

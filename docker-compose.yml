@@ -1,4 +1,4 @@
-# torque — TP7 · solución integrada con autenticación JWT.
+# torque — solución integrada (TP7 + correcciones de la primera revisión).
 #   bash scripts/generar-env.sh      (una sola vez: crea .env con secretos aleatorios)
 #   docker compose up --build        (levanta todo)
 #   docker compose down              (detiene; conserva los volúmenes)
@@ -37,7 +37,7 @@ services:
   # ---------------------------------------------------------------- borde
   api-gateway:
     build: ./services/api-gateway
-    image: torque/api-gateway:tp7
+    image: torque/api-gateway:v2
     restart: unless-stopped
     environment:
       PORT: 3000
@@ -78,13 +78,14 @@ services:
   # servicios validan el token con el secreto compartido, sin consultar esta base.
   auth-service:
     build: ./services/auth-service
-    image: torque/auth-service:tp7
+    image: torque/auth-service:v2
     restart: unless-stopped
     environment:
       <<: *jwt-env
       PORT: 3000
       MONGODB_URI: mongodb://auth-db:27017/auth
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-5m}
+      SESSION_IDLE: ${SESSION_IDLE:-15m}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@torque.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Falta ADMIN_PASSWORD en .env (correr bash scripts/generar-env.sh)}
@@ -99,7 +100,7 @@ services:
   # ---------------------------------------------------------------- dominio
   vehicles-service:
     build: ./services/vehicles-service
-    image: torque/vehicles-service:tp7
+    image: torque/vehicles-service:v2
     restart: unless-stopped
     environment:
       <<: *jwt-env
@@ -115,7 +116,7 @@ services:
 
   inventory-service:
     build: ./services/inventory-service
-    image: torque/inventory-service:tp7
+    image: torque/inventory-service:v2
     restart: unless-stopped
     environment:
       <<: *jwt-env
@@ -124,6 +125,8 @@ services:
       REDIS_URL: redis://redis:6379
       LOCK_TTL_MS: ${LOCK_TTL_MS:-8000}
       DEMO_DELAY_MS: ${DEMO_DELAY_MS:-1000}
+      # Endpoints de laboratorio (reiniciar, lock, descontar-sin-lock): apagados salvo LAB_ENDPOINTS=true.
+      LAB_ENDPOINTS: ${LAB_ENDPOINTS:-false}
       SEED_ON_START: "true"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     healthcheck: *healthcheck-node
@@ -136,7 +139,7 @@ services:
 
   workorders-service:
     build: ./services/workorders-service
-    image: torque/workorders-service:tp7
+    image: torque/workorders-service:v2
     restart: unless-stopped
     environment:
       <<: *jwt-env

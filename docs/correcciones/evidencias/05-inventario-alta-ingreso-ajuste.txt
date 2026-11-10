@@ -1,0 +1,80 @@
+
+$ docker compose exec -T inventory-db mongosh inventory --quiet --eval 'db.repuestos.deleteMany({codigo: "RAD-COR-001"}); db.movimientos.deleteMany({codigo: "RAD-COR-001"}).deletedCount'
+0
+
+# Requisito 6: alta de repuesto, solo ADMIN, código único
+
+$ pedir "$T_MEC1" POST /api/repuestos "{\"nombre\":\"Radiador Corolla\",\"codigo\":\"RAD-COR-001\",\"stock\":2}" | tail -n 2
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+
+
+$ pedir "$T_ADMIN" POST /api/repuestos "{\"nombre\":\"Radiador Corolla\",\"codigo\":\"RAD-COR-001\",\"stock\":2}"
+{"mensaje":"Repuesto creado.","item":{"id":"6af0cd78771c14acca764309","nombre":"Radiador Corolla","codigo":"RAD-COR-001","stock":2},"movimiento":{"id":"6af0cd78771c14acca76430c","fecha":"2026-11-08T19:28:56.117Z","tipo":"INGRESO","repuestoId":"6af0cd78771c14acca764309","codigo":"RAD-COR-001","cantidad":2,"stockAnterior":0,"stockResultante":2,"usuario":"6af0cd46a298f5a83837167a","rol":"ADMIN","ordenId":null,"motivo":"Stock inicial del alta"}}
+HTTP 201
+
+
+$ pedir "$T_ADMIN" POST /api/repuestos "{\"nombre\":\"Otro radiador\",\"codigo\":\"rad-cor-001\"}"
+{"error":"Conflicto de integridad.","detalles":["Ya existe un repuesto con ese código."]}
+HTTP 409
+
+# Requisito 7: ingreso (suma mercadería) y ajuste (corrige un conteo, exige motivo): dos operaciones distintas, solo ADMIN
+
+$ pedir "$T_MEC1" POST /api/repuestos/$REP_RAD/ingreso "{\"cantidad\":5}" | tail -n 1
+HTTP 403
+
+
+$ ver "$T_ADMIN" POST /api/repuestos/$REP_RAD/ingreso '{"cantidad":5,"motivo":"Remito 0001-00012345"}' '({item:j.item, movimiento:{tipo:j.movimiento.tipo,cantidad:j.movimiento.cantidad,stock:j.movimiento.stockAnterior+" → "+j.movimiento.stockResultante,motivo:j.movimiento.motivo}})'
+{
+  "item": {
+    "id": "6af0cd78771c14acca764309",
+    "nombre": "Radiador Corolla",
+    "codigo": "RAD-COR-001",
+    "stock": 7
+  },
+  "movimiento": {
+    "tipo": "INGRESO",
+    "cantidad": 5,
+    "stock": "2 → 7",
+    "motivo": "Remito 0001-00012345"
+  }
+}
+HTTP 200
+
+# Ajuste sin motivo → 400
+
+$ pedir "$T_ADMIN" POST /api/repuestos/$REP_RAD/ajuste "{\"cantidad\":-1}"
+{"error":"Datos inválidos o incompletos.","detalles":["El ajuste exige un motivo (mínimo 5 caracteres)."]}
+HTTP 400
+
+
+$ ver "$T_ADMIN" POST /api/repuestos/$REP_RAD/ajuste '{"cantidad":-1,"motivo":"Conteo físico: una unidad golpeada"}' '({item:j.item, movimiento:{tipo:j.movimiento.tipo,cantidad:j.movimiento.cantidad,stock:j.movimiento.stockAnterior+" → "+j.movimiento.stockResultante,motivo:j.movimiento.motivo}})'
+{
+  "item": {
+    "id": "6af0cd78771c14acca764309",
+    "nombre": "Radiador Corolla",
+    "codigo": "RAD-COR-001",
+    "stock": 6
+  },
+  "movimiento": {
+    "tipo": "AJUSTE",
+    "cantidad": -1,
+    "stock": "7 → 6",
+    "motivo": "Conteo físico: una unidad golpeada"
+  }
+}
+HTTP 200
+
+# Un ajuste que dejaría el stock negativo → 409
+
+$ pedir "$T_ADMIN" POST /api/repuestos/$REP_RAD/ajuste "{\"cantidad\":-50,\"motivo\":\"Error de prueba\"}"
+{"error":"Ajuste inválido.","detalles":["El stock de RAD-COR-001 es 6: un ajuste de -50 lo dejaría negativo."]}
+HTTP 409
+
+# Libro de movimientos del repuesto (requisito 9): tipo, cantidad, saldo, usuario y motivo
+
+$ libro "repuestoId=$REP_RAD"
+INGRESO    RAD-COR-001    +2   0 → 2  orden=-  usuario=ADMIN  «Stock inicial del alta»
+INGRESO    RAD-COR-001    +5   2 → 7  orden=-  usuario=ADMIN  «Remito 0001-00012345»
+AJUSTE     RAD-COR-001    -1   7 → 6  orden=-  usuario=ADMIN  «Conteo físico: una unidad golpeada»
+

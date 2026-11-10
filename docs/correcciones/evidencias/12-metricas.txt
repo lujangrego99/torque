@@ -1,0 +1,94 @@
+# Observabilidad: cada servicio expone GET /metrics (pedidos, errores, tiempos por ruta).
+# El gateway publica las suyas y el agregado de todos en /metrics/servicios.
+
+$ curl -s http://localhost:3000/metrics/servicios | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log('servicio'.padEnd(20),'pedidos','5xx','p95ms','promms');for(const r of j.resumen)console.log(r.servicio.padEnd(20),String(r.pedidos).padStart(7),String(r.errores5xx).padStart(4),String(r.p95Ms).padStart(6),String(r.promedioMs).padStart(6))})"
+servicio             pedidos 5xx p95ms promms
+workorders-service        30    0 1068.29 219.97
+api-gateway              176    0 333.45 122.41
+auth-service              55    0 267.96 144.27
+inventory-service          5    0  32.55   9.58
+vehicles-service          20    0   8.68   4.59
+
+# Cuello de botella: workorders es el más lento porque cada orden espera, en serie, los descuentos de inventory
+# (cada uno retenido DEMO_DELAY_MS dentro del lock). El detalle por ruta lo confirma:
+
+$ curl -s http://localhost:3000/metrics/servicios | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const m=JSON.parse(d).servicios['workorders-service'];console.log(JSON.stringify({pedidos:m.pedidos,tiempoRespuestaMs:m.tiempoRespuestaMs,porRuta:Object.fromEntries(Object.entries(m.porRuta).slice(0,6))},null,2))})"
+{
+  "pedidos": {
+    "total": 30,
+    "enCurso": 0,
+    "errores4xx": 11,
+    "errores5xx": 0,
+    "tasaError5xx": 0,
+    "porStatus": {
+      "200": 14,
+      "201": 5,
+      "400": 2,
+      "403": 3,
+      "409": 6
+    }
+  },
+  "tiempoRespuestaMs": {
+    "promedio": 219.97,
+    "p50": 4.57,
+    "p95": 1068.29,
+    "p99": 2083.7,
+    "max": 2083.7,
+    "muestras": 30
+  },
+  "porRuta": {
+    "POST /api/ordenes": {
+      "pedidos": 6,
+      "errores5xx": 0,
+      "promedioMs": 1054.74,
+      "maxMs": 2083.7
+    },
+    "POST /:id/cancelar": {
+      "pedidos": 5,
+      "errores5xx": 0,
+      "promedioMs": 3.75,
+      "maxMs": 4.48
+    },
+    "GET /api/ordenes": {
+      "pedidos": 4,
+      "errores5xx": 0,
+      "promedioMs": 4.57,
+      "maxMs": 5.25
+    },
+    "POST /api/ordenes/:id/cancelar": {
+      "pedidos": 3,
+      "errores5xx": 0,
+      "promedioMs": 47.21,
+      "maxMs": 82.14
+    },
+    "GET /api/ordenes/vehiculo/:vehiculoId": {
+      "pedidos": 2,
+      "errores5xx": 0,
+      "promedioMs": 4.39,
+      "maxMs": 5.78
+    },
+    "GET /api/ordenes/:id": {
+      "pedidos": 2,
+      "errores5xx": 0,
+      "promedioMs": 3.6,
+      "maxMs": 3.83
+    }
+  }
+}
+
+# Mismo dato en formato Prometheus (para un recolector externo; centralizarlo queda fuera de alcance):
+
+$ curl -s 'http://localhost:3000/metrics?formato=prometheus' | head -n 12
+# TYPE torque_pedidos_total counter
+torque_pedidos_total{servicio="api-gateway",status="200"} 108
+torque_pedidos_total{servicio="api-gateway",status="201"} 9
+torque_pedidos_total{servicio="api-gateway",status="204"} 1
+torque_pedidos_total{servicio="api-gateway",status="400"} 5
+torque_pedidos_total{servicio="api-gateway",status="401"} 8
+torque_pedidos_total{servicio="api-gateway",status="403"} 7
+torque_pedidos_total{servicio="api-gateway",status="404"} 4
+torque_pedidos_total{servicio="api-gateway",status="409"} 36
+# TYPE torque_pedidos_en_curso gauge
+torque_pedidos_en_curso{servicio="api-gateway"} 0
+# TYPE torque_tiempo_respuesta_ms gauge
+

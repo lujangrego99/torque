@@ -1,0 +1,126 @@
+# Requisitos 10 y 14. Stock inicial:
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+# MECANICO 1 crea una orden con 2 bujías y 1 juego de pastillas → 201 EN_PROCESO
+
+$ ver "$T_MEC1" GET /api/ordenes/$O1 '' '({estado:j.estado||(j.orden&&j.orden.estado), error:j.error, detalles:j.detalles, items:(j.items||(j.orden&&j.orden.items)||[]).map(i=>i.codigo+" x"+i.cantidad+" "+i.estado), cancelacion:j.cancelacion, reposicion:j.reposicion||(j.orden&&j.orden.reposicion), historial:(j.historial||(j.orden&&j.orden.historial)||[]).map(h=>h.estado+(h.detalle?" («"+h.detalle+"»)":""))})'
+{
+  "estado": "EN_PROCESO",
+  "items": [
+    "BUJ-NGK-001 x2 DESCONTADO",
+    "PAS-FRE-001 x1 DESCONTADO"
+  ],
+  "historial": [
+    "PENDIENTE («Orden registrada»)",
+    "EN_PROCESO («Repuestos asignados»)"
+  ]
+}
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 6
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 3
+
+# Otro mecánico no puede cancelarla → 403 · sin motivo → 400
+
+$ pedir "$T_MEC2" POST /api/ordenes/$O1/cancelar "{\"motivo\":\"No es mía\"}" | tail -n 1
+HTTP 403
+
+
+$ pedir "$T_MEC1" POST /api/ordenes/$O1/cancelar "{}"
+{"error":"Datos inválidos o incompletos.","detalles":["motivo es obligatorio (mínimo 5 caracteres)."]}
+HTTP 400
+
+# El dueño la cancela con motivo → CANCELADA, motivo/quién/cuándo, y el stock vuelve SOLO (reposición COMPLETA)
+
+$ ver "$T_MEC1" POST /api/ordenes/$O1/cancelar '{"motivo":"El cliente decidió no hacer el trabajo"}' '({estado:j.estado||(j.orden&&j.orden.estado), error:j.error, detalles:j.detalles, items:(j.items||(j.orden&&j.orden.items)||[]).map(i=>i.codigo+" x"+i.cantidad+" "+i.estado), cancelacion:j.cancelacion, reposicion:j.reposicion||(j.orden&&j.orden.reposicion), historial:(j.historial||(j.orden&&j.orden.historial)||[]).map(h=>h.estado+(h.detalle?" («"+h.detalle+"»)":""))})'
+{
+  "estado": "CANCELADA",
+  "items": [
+    "BUJ-NGK-001 x2 REPUESTO",
+    "PAS-FRE-001 x1 REPUESTO"
+  ],
+  "cancelacion": {
+    "motivo": "El cliente decidió no hacer el trabajo",
+    "por": "6af0cd4da298f5a838371680",
+    "rol": "MECANICO",
+    "fecha": "2026-11-08T19:28:59.444Z"
+  },
+  "reposicion": {
+    "estado": "COMPLETA",
+    "unidades": 3,
+    "fecha": "2026-11-08T19:28:59.475Z",
+    "intentos": 1
+  },
+  "historial": [
+    "PENDIENTE («Orden registrada»)",
+    "EN_PROCESO («Repuestos asignados»)",
+    "CANCELADA («El cliente decidió no hacer el trabajo»)"
+  ]
+}
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+# Libro de la orden: cada DESCUENTO tiene su REPOSICION (contramovimiento ligado a la misma orden, no rollback)
+
+$ libro "ordenId=$O1"
+DESCUENTO  BUJ-NGK-001    -2   8 → 6  orden=6af0cd790728aa9304818559  usuario=mecanico1 
+DESCUENTO  PAS-FRE-001    -1   4 → 3  orden=6af0cd790728aa9304818559  usuario=mecanico1 
+REPOSICION PAS-FRE-001    +1   3 → 4  orden=6af0cd790728aa9304818559  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
+REPOSICION BUJ-NGK-001    +2   6 → 8  orden=6af0cd790728aa9304818559  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
+
+# Cancelar dos veces → 409 (la orden queda en la base como CANCELADA)
+
+$ pedir "$T_MEC1" POST /api/ordenes/$O1/cancelar "{\"motivo\":\"Otra vez\"}"
+{"error":"La orden no se puede cancelar.","detalles":["Estado actual: CANCELADA. Solo se cancelan órdenes PENDIENTE o EN_PROCESO."]}
+HTTP 409
+
+# La reposición es idempotente: pedirla de nuevo a inventory no vuelve a sumar
+
+$ ver "$T_MEC1" POST /api/repuestos/reposiciones '{"ordenId":"'$O1'"}' '({unidadesRepuestas:j.unidadesRepuestas, items:j.items.map(i=>i.codigo+" "+i.estado)})'
+{
+  "unidadesRepuestas": 0,
+  "items": [
+    "PAS-FRE-001 YA_REPUESTO",
+    "BUJ-NGK-001 YA_REPUESTO"
+  ]
+}
+HTTP 200
+
+# El ADMIN también puede cancelar la orden de un mecánico:
+
+$ ver "$T_ADMIN" POST /api/ordenes/$O2/cancelar '{"motivo":"Orden cargada por error"}' '({estado:j.estado, cancelacion:j.cancelacion, reposicion:j.reposicion})'
+{
+  "estado": "CANCELADA",
+  "cancelacion": {
+    "motivo": "Orden cargada por error",
+    "por": "6af0cd46a298f5a83837167a",
+    "rol": "ADMIN",
+    "fecha": "2026-11-08T19:29:00.711Z"
+  },
+  "reposicion": {
+    "estado": "COMPLETA",
+    "unidades": 2,
+    "fecha": "2026-11-08T19:29:00.725Z",
+    "intentos": 1
+  }
+}
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+

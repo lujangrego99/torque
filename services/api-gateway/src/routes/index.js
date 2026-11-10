@@ -4,6 +4,8 @@ const health = require("../controllers/health");
 const docs = require("../controllers/docs");
 const proxy = require("../controllers/proxy");
 const spec = require("../docs/openapi");
+const config = require("../config");
+const metricas = require("../config/metricas");
 
 const router = express.Router();
 
@@ -12,6 +14,10 @@ const capturar = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next))
 
 router.get("/health", health.propia);
 router.get("/health/servicios", capturar(health.servicios));
+
+// Observabilidad: métricas del gateway y agregado de los servicios internos.
+router.get("/metrics", metricas.endpoint(config.serviceName));
+router.get("/metrics/servicios", capturar(health.metricas));
 
 router.get("/api-docs/gateway.json", (req, res) => res.json(spec));
 router.get("/api-docs/:servicio.json", capturar(docs.specDe));

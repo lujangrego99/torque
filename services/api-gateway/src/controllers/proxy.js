@@ -16,6 +16,8 @@ async function reenviar(req, res, next) {
   if (!destino) return next();
 
   const { servicio } = destino;
+  // Métrica por prefijo público + método (no por URL: los ids no abren entradas nuevas).
+  res.locals.rutaMetrica = `${req.method} ${destino.prefijo} → ${servicio.nombre}`;
   const headers = {};
   for (const h of HEADERS_IDA) {
     if (req.get(h)) headers[h] = req.get(h);
