@@ -4,21 +4,21 @@ $ printf "%s" "$L" | ocultar | node -e "let d=\"\";process.stdin.on(\"data\",c=>
 {
   accessToken: 'eyJhbGciOiJIUzI1…(oculto)',
   tokenType: 'Bearer',
-  expiresIn: 300,
-  refreshToken: 'lPDrxbKAuH0Gp0R9…(oculto)',
+  expiresIn: 900,
+  refreshToken: 'zam-i_z09B5kN3F2…(oculto)',
   refreshExpiresIn: 900,
-  sesionVenceSinUsoEn: '2026-11-08T19:43:15.539Z'
+  sesionVenceSinUsoEn: '2026-11-10T20:27:19.715Z'
 }
 
 
 $ decodificar "$A1"
-payload: {"rol":"MECANICO","sid":"6af0cd4fa298f5a838371698","iat":1794166095,"exp":1794166395,"aud":"torque","iss":"torque-auth","sub":"6af0cd4da298f5a838371680"}
-vigencia: 300 s  (exp 2026-11-08T19:33:15.000Z)
+payload: {"rol":"MECANICO","sid":"6af37aa3fa7aea49723c3275","iat":1794341539,"exp":1794342439,"aud":"torque","iss":"torque-auth","sub":"6af37aa0fa7aea49723c325d"}
+vigencia: 900 s  (exp 2026-11-10T20:27:19.000Z)
 
 # Renovación con R1: access nuevo + refresh nuevo R2 (R1 se rota y deja de servir)
 
 $ printf "%s\n" "$OUT" | ocultar
-{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":300,"refreshToken":"0FjAGe-mlm4bHLfp…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-08T19:43:15.652Z"}
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":900,"refreshToken":"INFsSZNsAuQReBr5…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-10T20:27:19.890Z"}
 HTTP 200
 
 # Reusar R1 (ya rotado) → 401 y se revoca la sesión entera (posible robo del refresh token)
@@ -52,12 +52,12 @@ HTTP 200
 # Inactividad: se reinicia SOLO auth-service con SESSION_IDLE=8s (configuración externa).
 
 $ SESSION_IDLE=8s docker compose up -d --wait auth-service 2>&1 | tail -n 1
- Container torque-auth-service-1  Healthy
+ Container torque-auth-service-1 Healthy 
 
 # Uso continuo: renovar a los 5 s mantiene viva la sesión (cada renovación corre el plazo)…
 
 $ echo "renovado a los 5 s: ${R5:0:16}…(oculto)"
-renovado a los 5 s: MIOqcgerclM1ZeR3…(oculto)
+renovado a los 5 s: D9JT4ISkZUEyPgVz…(oculto)
 
 
 $ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R5\"}" | tail -n 1
@@ -71,16 +71,16 @@ HTTP 401
 
 
 $ docker compose logs --no-color --since 40s auth-service | grep -E 'renovada|inactividad|reutilizado|Logout' | cut -d'|' -f2- | cut -c1-170 | tail -n 6
- 2026-11-08T19:28:18.110Z [INFO] [auth-service] Escuchando en el puerto 3000 · JWT HS256 iss=torque-auth aud=torque vence=5m · inactividad=8s · bcrypt=12
- 2026-11-08T19:28:28.061Z [INFO] [auth-service] Sesión renovada sub=6af0cd4da298f5a838371680 sesion=6af0cd5618d36ee94ef3df78 renovaciones=1 vence=2026-11-08T19:33:28.000
- 2026-11-08T19:28:33.088Z [INFO] [auth-service] Sesión renovada sub=6af0cd4da298f5a838371680 sesion=6af0cd5618d36ee94ef3df78 renovaciones=2 vence=2026-11-08T19:33:33.000
- 2026-11-08T19:28:43.376Z [INFO] [auth-service] Sesión vencida por inactividad sesion=6af0cd6118d36ee94ef3df81 sub=6af0cd4da298f5a838371680 (último uso 2026-11-08T19:28
- 2026-11-08T19:28:43.377Z [WARN] [auth-service] POST /api/auth/refresh: Sesión no válida. (La sesión venció por inactividad. Volver a iniciar sesión.)
+ 2026-11-10T20:12:22.913Z [INFO] [auth-service] Escuchando en el puerto 3000 · JWT HS256 iss=torque-auth aud=torque vence=15m · inactividad=8s · bcrypt=12
+ 2026-11-10T20:12:32.436Z [INFO] [auth-service] Sesión renovada sub=6af37aa0fa7aea49723c325d sesion=6af37aab3539dd98ca2e7edb renovaciones=1 vence=2026-11-10T20:27:32.000Z
+ 2026-11-10T20:12:37.482Z [INFO] [auth-service] Sesión renovada sub=6af37aa0fa7aea49723c325d sesion=6af37aab3539dd98ca2e7edb renovaciones=2 vence=2026-11-10T20:27:37.000Z
+ 2026-11-10T20:12:47.939Z [INFO] [auth-service] Sesión vencida por inactividad sesion=6af37ab53539dd98ca2e7ee4 sub=6af37aa0fa7aea49723c325d (último uso 2026-11-10T20:12:3
+ 2026-11-10T20:12:47.940Z [WARN] [auth-service] POST /api/auth/refresh: Sesión no válida. (La sesión venció por inactividad. Volver a iniciar sesión.)
 
 # Se restaura la configuración normal.
 
 $ docker compose up -d --wait auth-service 2>&1 | tail -n 1
- Container torque-auth-service-1  Healthy
+ Container torque-auth-service-1 Healthy 
 
 # Deshabilitar un usuario revoca sus sesiones:
 
@@ -99,20 +99,20 @@ HTTP 200
 
 $ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.sesiones.aggregate([{$group:{_id:"$motivoRevocacion",n:{$sum:1}}}]).toArray()'
 [
-  { _id: 'usuario_deshabilitado', n: 2 },
+  { _id: 'logout', n: 1 },
   { _id: 'reutilizacion_refresh_token', n: 1 },
   { _id: null, n: 7 },
-  { _id: 'logout', n: 1 },
-  { _id: 'inactividad', n: 1 }
+  { _id: 'inactividad', n: 1 },
+  { _id: 'usuario_deshabilitado', n: 2 }
 ]
 
 # En la base se guarda solo el hash del refresh token, nunca el valor:
 
 $ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.sesiones.findOne({}, {_id:0, tokenHash:1, ultimoUso:1, expiraEn:1, renovaciones:1, revocadaEn:1, motivoRevocacion:1})'
 {
-  tokenHash: '4783f7931a7b3f60af5fef2deee7e17fc821ade23ee5ddb17815c5a56a1d774a',
-  ultimoUso: ISODate('2026-11-08T19:28:13.207Z'),
-  expiraEn: ISODate('2026-11-08T19:43:13.207Z'),
+  tokenHash: 'b8188d3bf4f623f409bdd13d4090954a54896a69e4510a7f7e0129b4aa717e7d',
+  ultimoUso: ISODate('2026-11-10T20:12:16.444Z'),
+  expiraEn: ISODate('2026-11-10T20:27:16.444Z'),
   renovaciones: 0
 }
 

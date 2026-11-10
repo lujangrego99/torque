@@ -1,15 +1,15 @@
 # Solución levantada con un solo comando. LAB_ENDPOINTS=true solo para la demo de carrera (sección 10).
 
 $ docker compose ps --format '{{.Service}}\t{{.Status}}' | sort
-api-gateway	Up 6 seconds (healthy)
+api-gateway	Up 5 seconds (healthy)
 auth-db	Up 13 seconds (healthy)
 auth-service	Up 7 seconds (healthy)
-inventory-db	Up 13 seconds (healthy)
-inventory-service	Up 7 seconds (healthy)
+inventory-db	Up 12 seconds (healthy)
+inventory-service	Up 6 seconds (healthy)
 redis	Up 13 seconds (healthy)
 vehicles-db	Up 13 seconds (healthy)
 vehicles-service	Up 7 seconds (healthy)
-workorders-db	Up 13 seconds (healthy)
+workorders-db	Up 12 seconds (healthy)
 workorders-service	Up 6 seconds (healthy)
 
 

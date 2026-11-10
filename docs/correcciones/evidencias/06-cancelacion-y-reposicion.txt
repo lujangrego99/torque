@@ -48,14 +48,14 @@ $ ver "$T_MEC1" POST /api/ordenes/$O1/cancelar '{"motivo":"El cliente decidió n
   ],
   "cancelacion": {
     "motivo": "El cliente decidió no hacer el trabajo",
-    "por": "6af0cd4da298f5a838371680",
+    "por": "6af37aa0fa7aea49723c325d",
     "rol": "MECANICO",
-    "fecha": "2026-11-08T19:28:59.444Z"
+    "fecha": "2026-11-10T20:13:06.679Z"
   },
   "reposicion": {
     "estado": "COMPLETA",
     "unidades": 3,
-    "fecha": "2026-11-08T19:28:59.475Z",
+    "fecha": "2026-11-10T20:13:06.703Z",
     "intentos": 1
   },
   "historial": [
@@ -75,10 +75,10 @@ PAS-FRE-001  stock 4
 # Libro de la orden: cada DESCUENTO tiene su REPOSICION (contramovimiento ligado a la misma orden, no rollback)
 
 $ libro "ordenId=$O1"
-DESCUENTO  BUJ-NGK-001    -2   8 → 6  orden=6af0cd790728aa9304818559  usuario=mecanico1 
-DESCUENTO  PAS-FRE-001    -1   4 → 3  orden=6af0cd790728aa9304818559  usuario=mecanico1 
-REPOSICION PAS-FRE-001    +1   3 → 4  orden=6af0cd790728aa9304818559  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
-REPOSICION BUJ-NGK-001    +2   6 → 8  orden=6af0cd790728aa9304818559  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
+DESCUENTO  BUJ-NGK-001    -2   8 → 6  orden=6af37ad0f411666a69e82bf4  usuario=mecanico1 
+DESCUENTO  PAS-FRE-001    -1   4 → 3  orden=6af37ad0f411666a69e82bf4  usuario=mecanico1 
+REPOSICION PAS-FRE-001    +1   3 → 4  orden=6af37ad0f411666a69e82bf4  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
+REPOSICION BUJ-NGK-001    +2   6 → 8  orden=6af37ad0f411666a69e82bf4  usuario=mecanico1  «Orden cancelada: El cliente decidió no hacer el trabajo»
 
 # Cancelar dos veces → 409 (la orden queda en la base como CANCELADA)
 
@@ -105,14 +105,14 @@ $ ver "$T_ADMIN" POST /api/ordenes/$O2/cancelar '{"motivo":"Orden cargada por er
   "estado": "CANCELADA",
   "cancelacion": {
     "motivo": "Orden cargada por error",
-    "por": "6af0cd46a298f5a83837167a",
+    "por": "6af37a99fa7aea49723c3257",
     "rol": "ADMIN",
-    "fecha": "2026-11-08T19:29:00.711Z"
+    "fecha": "2026-11-10T20:13:07.959Z"
   },
   "reposicion": {
     "estado": "COMPLETA",
     "unidades": 2,
-    "fecha": "2026-11-08T19:29:00.725Z",
+    "fecha": "2026-11-10T20:13:07.975Z",
     "intentos": 1
   }
 }

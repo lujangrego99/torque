@@ -48,7 +48,7 @@ HTTP 409
 # Requisito 16: sin la variable, los endpoints de laboratorio NO existen (404) y no aparecen en Swagger
 
 $ LAB_ENDPOINTS=false docker compose up -d --wait inventory-service 2>&1 | tail -n 1
- Container torque-inventory-service-1  Healthy
+ Container torque-inventory-service-1 Healthy 
 
 
 $ pedir "$T_ADMIN" POST /api/repuestos/reiniciar
@@ -81,5 +81,5 @@ laboratorio=apagado
 # Se vuelve a activar para el resto de las pruebas.
 
 $ LAB_ENDPOINTS=true docker compose up -d --wait inventory-service 2>&1 | tail -n 1
- Container torque-inventory-service-1  Healthy
+ Container torque-inventory-service-1 Healthy 
 

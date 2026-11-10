@@ -12,21 +12,21 @@ HTTP 400
 # Alta completa por un MECANICO → 201
 
 $ pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"
-{"id":"6af0cd75ebb6ee7a9efc02fd","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+{"id":"6af37aca52fc090c1e194cd4","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
 HTTP 201
 
 # Mismo auto otra vez (la patente con guion y minúsculas se normaliza) → 409 con el vehículo existente, no se duplica
 
 $ pedir "$T_MEC2" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"ae-001zz\",\"kilometraje\":16000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"
-{"error":"Vehículo ya registrado.","detalles":["La patente AE001ZZ ya está cargada. Usar el vehículo existente."],"vehiculoExistente":{"id":"6af0cd75ebb6ee7a9efc02fd","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}}
+{"error":"Vehículo ya registrado.","detalles":["La patente AE001ZZ ya está cargada. Usar el vehículo existente."],"vehiculoExistente":{"id":"6af37aca52fc090c1e194cd4","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}}
 HTTP 409
 
 # Se usa el existente para la orden nueva: alcanza con la patente
 
 $ ver "$T_MEC2" POST /api/ordenes '{"patente":"AE001ZZ","descripcion":"Revisión de frenos"}' '({id:j.id, vehiculoId:j.vehiculoId, patente:j.patente, estado:j.estado})'
 {
-  "id": "6af0cd750728aa9304818554",
-  "vehiculoId": "6af0cd75ebb6ee7a9efc02fd",
+  "id": "6af37acbf411666a69e82bef",
+  "vehiculoId": "6af37aca52fc090c1e194cd4",
   "patente": "AE001ZZ",
   "estado": "EN_PROCESO"
 }
@@ -39,7 +39,7 @@ HTTP 403
 
 
 $ pedir "$T_ADMIN" DELETE /api/vehiculos/$VEH_NUEVO "{\"motivo\":\"El dueño vendió el auto\"}"
-{"id":"6af0cd75ebb6ee7a9efc02fd","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":false,"baja":{"fecha":"2026-11-08T19:28:53.305Z","por":"6af0cd46a298f5a83837167a","motivo":"El dueño vendió el auto"}}
+{"id":"6af37aca52fc090c1e194cd4","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":false,"baja":{"fecha":"2026-11-10T20:12:59.193Z","por":"6af37a99fa7aea49723c3257","motivo":"El dueño vendió el auto"}}
 HTTP 200
 
 # El auto sigue en la base, no aparece en el listado de activos y no admite órdenes nuevas (409):
@@ -50,8 +50,8 @@ $ docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehicul
   duenio: { nombre: 'Pedro Díaz', telefono: '261 555-0199' },
   activo: false,
   baja: {
-    fecha: ISODate('2026-11-08T19:28:53.305Z'),
-    por: '6af0cd46a298f5a83837167a',
+    fecha: ISODate('2026-11-10T20:12:59.193Z'),
+    por: '6af37a99fa7aea49723c3257',
     motivo: 'El dueño vendió el auto'
   }
 }
