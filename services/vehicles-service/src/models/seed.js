@@ -10,9 +10,9 @@ const IDS = {
 };
 
 const SEMILLA_VEHICULOS = [
-  { _id: IDS.corolla, marca: "Toyota", modelo: "Corolla", anio: 2018, patente: "AB123CD", kilometraje: 95000 },
-  { _id: IDS.ranger, marca: "Ford", modelo: "Ranger", anio: 2021, patente: "AC456EF", kilometraje: 42000 },
-  { _id: IDS.gol, marca: "Volkswagen", modelo: "Gol", anio: 2015, patente: "AD789GH", kilometraje: 130000 },
+  { _id: IDS.corolla, marca: "Toyota", modelo: "Corolla", anio: 2018, patente: "AB123CD", kilometraje: 95000, duenio: { nombre: "Laura Gómez", telefono: "261 555-0101" } },
+  { _id: IDS.ranger, marca: "Ford", modelo: "Ranger", anio: 2021, patente: "AC456EF", kilometraje: 42000, duenio: { nombre: "Martín Sosa", telefono: "261 555-0102" } },
+  { _id: IDS.gol, marca: "Volkswagen", modelo: "Gol", anio: 2015, patente: "AD789GH", kilometraje: 130000, duenio: { nombre: "Carla Ruiz", telefono: "261 555-0103" } },
 ];
 
 // Solo si la colección está vacía: si se reinsertara en cada arranque,
