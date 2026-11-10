@@ -4,24 +4,33 @@ const servicio = require("../services/vehiculos");
 // Los errores (ErrorHttp, Mongo caído, etc.) los resuelve el middleware de app.js.
 
 async function listar(req, res) {
-  res.status(200).json(await servicio.listar());
+  res.status(200).json(await servicio.listar(req.query));
 }
 
 async function obtener(req, res) {
   res.status(200).json(await servicio.obtener(req.params.id));
 }
 
+async function porPatente(req, res) {
+  res.status(200).json(await servicio.porPatente(req.params.patente));
+}
+
 async function crear(req, res) {
-  res.status(201).json(await servicio.crear(req.body));
+  const v = await servicio.crear(req.body, req.usuario);
+  res.status(201).location(`/api/vehiculos/${v.id}`).json(v);
 }
 
 async function reemplazar(req, res) {
-  res.status(200).json(await servicio.reemplazar(req.params.id, req.body));
+  res.status(200).json(await servicio.reemplazar(req.params.id, req.body, req.usuario));
 }
 
-async function eliminar(req, res) {
-  await servicio.eliminar(req.params.id);
-  res.status(204).send();
+// Baja lógica: 200 con el vehículo inactivo (no se borra).
+async function darDeBaja(req, res) {
+  res.status(200).json(await servicio.darDeBaja(req.params.id, req.body, req.usuario));
 }
 
-module.exports = { listar, obtener, crear, reemplazar, eliminar };
+async function reactivar(req, res) {
+  res.status(200).json(await servicio.reactivar(req.params.id, req.usuario));
+}
+
+module.exports = { listar, obtener, porPatente, crear, reemplazar, darDeBaja, reactivar };

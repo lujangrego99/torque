@@ -57,7 +57,7 @@ app.use((err, req, res, next) => {
     if (err.status >= 400 && err.status < 500) {
       logger.warn(`${req.method} ${req.originalUrl}: ${err.error}${err.detalles ? ` (${err.detalles.join("; ")})` : ""}`);
     }
-    return res.status(err.status).json({ error: err.error, ...(err.detalles ? { detalles: err.detalles } : {}) });
+    return res.status(err.status).json({ error: err.error, ...(err.detalles ? { detalles: err.detalles } : {}), ...(err.extra || {}) });
   }
   if (esBaseNoDisponible(err)) {
     logger.error(`${req.method} ${req.originalUrl}: MongoDB no disponible (${err.message}).`);
