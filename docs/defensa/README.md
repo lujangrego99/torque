@@ -10,7 +10,7 @@ Todo lo de este documento se corrió contra el stack completo en Docker (10 cont
 
 > **Plan completo de pruebas (E01–E42 + X01–X35):** matriz con estado por ID en [PLAN-RESULTADOS.md](PLAN-RESULTADOS.md). Las 42 de las suites dan PASS sobre datos limpios y las 10 P0 también; los defectos P1/P2 quedan listados con su hallazgo.
 >
-> ⚠️ El `.env` de esta PC tiene `JWT_EXPIRES_IN=15m` (salió de un `.env.example` viejo). Revisar y dejar **5m** en la máquina de exposición.
+> ⚠️ Sesión: el `.env` de esta PC quedó con `JWT_EXPIRES_IN=12h` y `SESSION_IDLE=12h` (decisión del 12/11 para que no moleste). El default del código sigue en 5m/15m (requisito 3). Cómo y dónde cambiarlo: [README raíz → «Cambiar cuánto dura la sesión»](../../README.md#cambiar-cuánto-dura-la-sesión). Copiar esas dos líneas al `.env` de la máquina de exposición si se quiere lo mismo.
 
 ## Resumen en 30 segundos
 
@@ -183,7 +183,7 @@ Lo que **sí** está bien resuelto (para contrastar):
 
 **¿Qué pasa si roban el `JWT_SECRET`?** Con HS256, el mismo secreto firma y verifica, y está en 5 servicios: si se filtra uno, se pueden fabricar tokens de ADMIN. Mejora: **RS256**, donde solo auth tiene la clave privada y los demás, la pública.
 
-**¿Logout invalida el acceso?** No del todo (H07, medido): el access sigue vigente hasta que vence. **En este `.env` vence a los 15 min, no a los 5 min del default**: revisar en la máquina de la exposición. Para revocar al instante haría falta una lista de revocación o tokens más cortos.
+**¿Logout invalida el acceso?** No del todo (H07, medido): el access sigue vigente hasta que vence. **Con el `.env` configurado en 12h, sigue valiendo hasta 12 h** (default del código: 5 min). Es el costo de no molestar al usuario. Para revocar al instante haría falta una lista de revocación o tokens más cortos.
 
 **¿Hay protección contra fuerza bruta?** bcrypt la encarece (~0,6 s por intento), pero **no hay rate limit** ni bloqueo de cuenta. Además, el mismo costo de bcrypt permite saturar el login (medido).
 
@@ -237,3 +237,13 @@ Los scripts leen la contraseña del admin de `.env` y nunca la imprimen. `carga.
 - Con `DEMO_DELAY_MS=1000`, **cada orden con repuestos tarda ~1 s**. Es normal: es el retardo del laboratorio.
 - **No hacer doble clic** en Execute de Swagger: crea dos órdenes (H15).
 - Si se hace una ráfaga de logins, auth queda ocupado un buen rato (sigue procesando la cola).
+
+## ¿Cada cuánto «se sale» el login? (S1, `scripts/defensa/sesion.mjs`)
+
+Dos relojes: el **access** dura `JWT_EXPIRES_IN` (**5 min** por defecto; **15m en el `.env` de la PC de pruebas**) y la **sesión** (refresh) vence tras `SESSION_IDLE` = **15 min sin renovar** (deslizante, sin máximo absoluto). Swagger no renueva solo: al vencer el access → 401 → `POST /api/auth/refresh`. Con `.env` en 15m ambos coinciden y en Swagger «se sale» a los 15 min.
+
+Prueba real escalada 1:30 (access 10 s, inactividad 30 s): access vencido → 401; refresh → 200; refresh cada 20 s durante 80 s → sigue viva; 35 s sin uso → refresh 401 «Sesión no válida». Resultado crudo: `resultados/S1-sesion.json`.
+
+PDF actualizado para el equipo: `Torque_Repaso_Actualizado.pdf` (fuente `repaso-actualizado.html`).
+
+**Actualización 12/11:** `.env` pasado a `JWT_EXPIRES_IN=12h` + `SESSION_IDLE=12h`. Verificado en `torque-defensa`: login `expiresIn=43200`, log `vence=12h · inactividad=43200s`, refresh 200.

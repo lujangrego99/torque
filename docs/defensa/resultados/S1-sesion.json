@@ -1,0 +1,52 @@
+[
+  {
+    "t": 0,
+    "que": "login (expiresIn=10s)",
+    "status": 200
+  },
+  {
+    "t": 0,
+    "que": "GET /api/vehiculos con access",
+    "status": 200
+  },
+  {
+    "t": 12,
+    "que": "mismo access a los 12 s (vencido)",
+    "status": 401
+  },
+  {
+    "t": 12,
+    "que": "POST /refresh",
+    "status": 200
+  },
+  {
+    "t": 12,
+    "que": "access nuevo",
+    "status": 200
+  },
+  {
+    "t": 32,
+    "que": "refresh con uso activo (cada 20 s)",
+    "status": 200
+  },
+  {
+    "t": 52,
+    "que": "refresh con uso activo (cada 20 s)",
+    "status": 200
+  },
+  {
+    "t": 72,
+    "que": "refresh con uso activo (cada 20 s)",
+    "status": 200
+  },
+  {
+    "t": 92,
+    "que": "refresh con uso activo (cada 20 s)",
+    "status": 200
+  },
+  {
+    "t": 127,
+    "que": "refresh tras 35 s inactivo: Sesión no válida.",
+    "status": 401
+  }
+]

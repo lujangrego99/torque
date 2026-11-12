@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Torque - Repaso de defensa actualizado</title>
+<style>
+  @page { size: A4; margin: 15mm 15mm 16mm 15mm; }
+  :root { --ink:#1b1f24; --muted:#5b636d; --line:#d5d9de; --acc:#9a3412; --ok:#166534; --bad:#b91c1c; --bg2:#f5f6f8; }
+  body { background:#fff; color:var(--ink); font: 9.6pt/1.42 "Inter","Helvetica Neue",Arial,sans-serif; margin:0; }
+  .hdr { font-size:7.5pt; letter-spacing:.12em; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:3px; margin-bottom:8px; }
+  h1 { font-size:15pt; margin:2px 0 6px; }
+  h2 { font-size:10.5pt; margin:10px 0 3px; }
+  h3 { font-size:9.6pt; margin:7px 0 2px; }
+  p { margin:2px 0 5px; }
+  ul, ol { margin:2px 0 5px; padding-left:17px; }
+  li { margin:1px 0; }
+  .page { page-break-after:always; }
+  .page:last-child { page-break-after:auto; }
+  .nota { font-size:7.8pt; color:var(--muted); border-top:1px solid var(--line); margin-top:8px; padding-top:3px; }
+  .nuevo { display:inline-block; font-size:7pt; font-weight:700; color:#fff; background:var(--acc); border-radius:3px; padding:0 4px; margin-right:4px; vertical-align:1px; }
+  .ok { color:var(--ok); font-weight:700; }
+  .bad { color:var(--bad); font-weight:700; }
+  .box { background:var(--bg2); border-left:3px solid var(--acc); padding:5px 8px; margin:6px 0; }
+  table { border-collapse:collapse; width:100%; margin:3px 0 7px; font-size:8.5pt; }
+  th, td { border-bottom:1px solid var(--line); padding:2px 5px; text-align:left; vertical-align:top; }
+  th { background:var(--bg2); font-weight:600; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .q { font-weight:700; margin-top:6px; }
+  .apretada { font-size:8.7pt; line-height:1.33; } .apretada p.q { margin-top:4px; } .apretada table { margin:2px 0 4px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO CON PRUEBAS EN DOCKER</div>
+<h1>1. El proyecto en un vistazo</h1>
+<p><b>Para decir en 30 segundos.</b> Torque organiza vehículos, trabajos y repuestos de un taller. Relaciona cada orden con el auto y el consumo de inventario, aplica permisos y conserva el historial. Presentamos una API mediante Swagger; no hay una interfaz comercial propia.</p>
+<h3>Qué está implementado</h3>
+<p>Identidad y sesiones; vehículos con dueño y baja lógica; stock y movimientos; órdenes, estados, cancelación y reposición. Roles: ADMIN y MECANICO. No incluye facturación, cobros, turnos ni avisos automáticos al cliente.</p>
+<h3>Arquitectura que todos deben poder dibujar</h3>
+<p>Cliente → gateway → auth / vehicles / inventory / workorders. Cada dominio tiene su MongoDB. Workorders consulta vehicles e inventory por HTTP. Inventory usa Redis para locks por repuesto. Son 10 contenedores: gateway, cuatro servicios, cuatro MongoDB y Redis. El monolito es histórico; Raft fue retirado.</p>
+<h3>Tecnologías y función</h3>
+<p>Node + Express: APIs. MongoDB + Mongoose: datos de negocio. Redis: coordinación temporal, no almacenamiento del stock. JWT y bcrypt: identidad y contraseñas. Docker Compose: entorno. Swagger: exploración y demo. Winston / request ID: diagnóstico.</p>
+<h3>Flujo normal de una orden</h3>
+<p>Login → vehículo activo → repuestos → orden PENDIENTE → descuentos → EN_PROCESO → FINALIZADA. Si se cancela, se intenta reponer. Crear con 201 no significa que el trabajo mecánico ya terminó. Una orden sin repuestos también es válida.</p>
+<h3>Tres fortalezas defendibles</h3>
+<ol>
+<li>Responsabilidades y persistencia separadas por dominio. <span class="nuevo">MEDIDO</span>Si se cae un servicio, solo deja de andar su dominio: con auth caído, los tokens ya emitidos siguen sirviendo.</li>
+<li>JWT validado en cada servicio, roles y propiedad de órdenes.</li>
+<li>Estados, movimientos y trazabilidad que permiten explicar qué ocurrió. <span class="nuevo">MEDIDO</span>En todas las cargas y caídas, el stock coincidió con la suma del libro de movimientos y nunca quedó negativo, salvo cuando forzamos el vencimiento del lock (H04).</li>
+</ol>
+<div class="box"><b>Veredicto actualizado.</b> Es defendible como laboratorio universitario. Ahora <b>sí tenemos evidencia</b> de capacidad en una PC: ~600–800 lecturas/s, ~130 órdenes/s y ~1,8 logins/s (ver §5). Las 42 pruebas de las suites existentes pasan con datos limpios. No hay evidencia para afirmar alta disponibilidad ni preparación para producción: es una sola PC, sin réplicas.</div>
+<h3>Qué cambió respecto del repaso original</h3>
+<ul>
+<li>Levantamos los 10 contenedores y corrimos <b>suites (42/42)</b>, <b>carga</b>, <b>caídas</b> y <b>carreras</b>.</li>
+<li><b>H02, H03, H04, H05, H07 y H15 se reprodujeron en vivo.</b> Ya no son solo «código y dobles».</li>
+<li>Encontramos límites nuevos: el login es el cuello de botella, el lock rechaza en lugar de hacer cola, el listado no pagina, X24, X26 y X33 (§2).</li>
+<li>La sesión «se sale» a los <b>5 min</b> por defecto, y a los <b>15 min</b> en la PC de pruebas por su <code>.env</code>. Explicación en §6.</li>
+</ul>
+<p class="nota">Mapa: 2 hallazgos · 3 preguntas básicas · 4 preguntas difíciles · 5 números medidos · 6 preguntas «¿y si…?» · 7 ensayo y contingencia. Mediciones del 12/11/2026 con Docker en una PC de 12 hilos; el generador de carga corría en la misma PC. Detalle: <code>docs/defensa/README.md</code> y <code>PLAN-RESULTADOS.md</code>.</p>
+</div>
+
+<!-- 2 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>2. Hallazgos que más importan</h1>
+<p><b>Idea central:</b> saldo, movimientos y estado de orden no forman una única operación indivisible. Las correcciones son propuestas: no se modificó el código del producto.</p>
+
+<h3>H01 · Saldo y movimiento separados | Alto</h3>
+<p>Una escritura puede completarse y la otra fallar; el intento de deshacer también puede fallar. Mejora: transacción en Mongo con replica set o rediseño atómico, más reconciliación. <span class="nuevo">PROBADO</span>En el caso de control (falla el movimiento, el revert funciona), se revierte el <code>$inc</code> y el cliente recibe 500. El doble fallo no se pudo inyectar sin tocar el código.</p>
+
+<h3>H02 · Cancelación durante un descuento | Alto · <span class="bad">reproducido</span></h3>
+<p>Creamos una orden de 3 unidades y la cancelamos a los 400 ms. Queda <b>CANCELADA</b>, el libro registra <code>DESCUENTO -3</code> y el <b>stock pasa de 10 a 7 sin reposición</b>. Reintentar la reposición da 409, así que por la API no hay forma de recuperarlo; solo un ajuste del ADMIN.</p>
+
+<h3>H03 · Permiso de negocio incompleto | Alto · <span class="bad">reproducido</span></h3>
+<p>Un MECANICO llama a <code>/descontar</code> con un <code>ordenId</code> inventado: <b>200 y el stock baja de 10 a 6</b>. Una reposición de una orden <b>FINALIZADA</b> también da 200 y devuelve repuestos ya usados.</p>
+
+<h3>H04 · El lock tiene vencimiento | Alto, condicionado · <span class="bad">reproducido</span></h3>
+<p>Con <code>LOCK_TTL_MS=300</code> y la demora de 1 s, las dos órdenes reciben 201 y el <b>stock pasa de 1 a −1</b>. Con el TTL normal (8 s) no ocurre: la segunda orden da 409. Mejora: guardia atómica <code>{stock: {$gte: n}}</code> en la escritura, o fencing token.</p>
+
+<h3>H05-H06 · Recuperación incompleta | Alto · <span class="bad">reproducido</span></h3>
+<p>Si matamos workorders en medio de un descuento, la orden queda <b>PENDIENTE para siempre</b> con el stock descontado, y cancelarla no repone nada. Si inventory muere en medio de la orden, en cambio, <code>/reponer</code> la recupera (COMPLETA). Ante un timeout, el ítem queda INCIERTO y la reposición consulta el libro y devuelve bien el stock. El campo de reposición de la orden, sin embargo, queda desactualizado.</p>
+
+<h3>Otros límites (todos medidos)</h3>
+<ul>
+<li><b>H15:</b> enviar el mismo POST dos veces crea <b>dos órdenes</b> (el stock baja de 10 a 8). Falta una clave de idempotencia.</li>
+<li><b>H07:</b> después del logout, el access sigue dando <b>200</b> hasta vencer; el refresh da 401.</li>
+<li><b>H08 / X33:</b> desde el contenedor de workorders-db se lee <b>inventory-db sin credenciales</b>, y vehicles-service llega a Redis. La red interna es plana.</li>
+<li><b>H13:</b> <span class="ok">mongodump/restore de inventory probado y OK</span> (X31). Un volumen sigue sin ser un backup.</li>
+</ul>
+
+<h3><span class="nuevo">NUEVO</span>Lo que el repaso original no tenía</h3>
+<ul>
+<li><b>Login = cuello de botella.</b> bcryptjs (JS puro, costo 12) usa ~0,6 s de CPU por login y bloquea el event loop de auth. Rinde <b>~1,8 logins/s</b>. Con 50 logins simultáneos, <b>15 dan 503</b>; con 100, dan 503 <b>75</b>.</li>
+<li><b>El lock no hace cola.</b> <code>descontar</code> no espera: con 100 pedidos al mismo repuesto, <b>1 entra y 99 reciben 409 «Recurso ocupado»</b>. Es correcto (nunca hay stock negativo), pero mala experiencia de uso.</li>
+<li><b><code>GET /api/ordenes</code> no pagina.</b> Con 5481 órdenes devuelve 4,4 MB en 0,9 s; con 10 usuarios a la vez, la mediana sube a <b>7 s</b>.</li>
+<li><b>X24 / H12:</b> editar y dar de baja un vehículo a la vez → en <b>9 de 10</b> intentos la edición se aplica después de la baja (actualización perdida).</li>
+<li><b>X26:</b> un ingreso de <code>2^53+1</code> se acepta (stock 9007199254741002, impreciso). Un cuerpo de más de 100 KB o 1 MB da <b>500</b> en lugar de 413.</li>
+<li><b>Sin certificado HTTPS</b> en una instalación nueva: el HTTPS queda deshabilitado. <span class="ok">npm audit: 0 vulnerabilidades</span> en los 5 servicios y no hay secretos versionados.</li>
+</ul>
+<p class="nota">Prioridad al mejorar, sin cambios: integridad local → autorización de operaciones → recuperación y concurrencia → endurecimiento. Para escalar, agregar paginación, réplicas del gateway y un bcrypt nativo o costo 10.</p>
+</div>
+
+<!-- 3 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>3. Diez respuestas esenciales</h1>
+<p>Practiquen respuestas de 20 a 30 segundos. Cada integrante debe poder explicar el control y su límite.</p>
+<p class="q">1. ¿Qué es Torque?</p><p>Una API de taller que relaciona vehículos, órdenes y repuestos, con permisos e historial. La demo usa Swagger; no mostramos un frontend comercial.</p>
+<p class="q">2. ¿Qué partes lo componen?</p><p>Un gateway y cuatro servicios: auth, vehicles, inventory y workorders. Cada dominio tiene su propio Mongo y las órdenes se coordinan por HTTP. Separar en carpetas, por sí solo, no crea microservicios: la prueba es que <b>con inventory caído siguen funcionando los vehículos y las órdenes sin repuestos</b> (medido).</p>
+<p class="q">3. ¿Por qué estas tecnologías?</p><p>Node/Express sirven las APIs, Mongo guarda los documentos del dominio, Redis coordina el acceso al stock y JWT identifica a los usuarios. SQL sería una alternativa válida, y tampoco eliminaría por sí solo las fallas entre servicios.</p>
+<p class="q">4. ¿Qué significa crear una orden?</p><p>Se validan el vehículo y los repuestos, se guarda como PENDIENTE, se descuentan los ítems y pasa a EN_PROCESO. FINALIZADA es una transición posterior, no lo que significa el 201.</p>
+<p class="q">5. ¿Mongo y Redis guardan lo mismo?</p><p>No. Mongo conserva usuarios, sesiones, vehículos, repuestos, movimientos y órdenes. Redis guarda locks con TTL y propietario; el stock vive en Mongo. <b>Con Redis caído</b> se siguen leyendo los stocks, pero toda escritura da 503: preferimos consistencia antes que disponibilidad (CP).</p>
+<p class="q">6. ¿Cómo autentican y autorizan?</p><p>Cada servicio valida firma, emisor, audiencia y vencimiento del JWT; después aplica el rol y, en órdenes, la propiedad. El historial por vehículo es visible para cualquier usuario autenticado, por diseño.</p>
+<p class="q">7. ¿Logout invalida todo acceso? ¿Cuánto dura la sesión?</p><p>Logout revoca la renovación. El access ya firmado sigue valiendo hasta expirar (<b>medido: da 200 después del logout</b>): <b>5 minutos por defecto en el código</b> (requisito 3), pero <b>lo configuramos en 12 h por <code>.env</code></b> para que no moleste. Es un trade-off consciente: con 12 h, un token robado o usado después del logout vale hasta 12 h. Detalle en §6.</p>
+<p class="q">8. ¿Qué sobrevive a reiniciar Docker?</p><p>Los datos de Mongo en volúmenes, si se conservan esos volúmenes. <b>Medido: el reinicio completo tarda ~8 s, los datos quedan intactos y los tokens viejos siguen sirviendo</b>. Un volumen no es un backup, pero mongodump/restore está probado.</p>
+<p class="q">9. ¿Cómo localizan una falla?</p><p>Seguimos el <code>x-request-id</code> entre servicios y contrastamos status, logs, salud y métricas con la orden, los movimientos y el saldo. Que el gateway responda no prueba que todo el sistema esté listo.</p>
+<p class="q">10. ¿Qué se verificó realmente?</p><p>Además de la auditoría de código, el 12/11 corrimos sobre los 10 contenedores las <b>tres suites (42/42 PASS)</b>, carga de lecturas, logins y órdenes, nueve escenarios de caída y seis carreras. Después de cada prueba controlamos las invariantes: stock igual a la suma del libro, stock no negativo y estado de la orden coherente con sus movimientos. Una prueba de carga en una sola PC mide esta PC, no producción.</p>
+<p class="nota">Un script que termina con código 0 no demuestra que todos los resultados de negocio sean correctos. Por eso las pruebas nuevas verifican las invariantes además del status HTTP.</p>
+</div>
+
+<!-- 4 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>4. Las cinco preguntas difíciles</h1>
+<p class="q">11. ¿Redis garantiza que el stock nunca sea negativo?</p>
+<p><b>Respuesta:</b> el lock protege mientras mantiene la exclusión. Lo medimos: con el TTL normal, <b>100 pedidos simultáneos nunca dejaron stock negativo</b>; con stock 5 y 30 clientes reintentando, se concretaron <b>exactamente 5 y el stock terminó en 0</b>. Pero si el lock vence mientras sigue la operación, sí puede quedar negativo: <b>con TTL 300 ms el stock llegó a −1</b>. Liberar solo con el token del dueño evita borrar un lock ajeno, pero no frena al dueño viejo.<br>
+<b>Repregunta:</b> ¿alcanza con aumentar el TTL? Reduce la probabilidad, pero no elimina las pausas arbitrarias (GC, CPU saturada). Hace falta una guardia atómica en la base (<code>$gte</code>) o un fencing token.</p>
+
+<p class="q">12. ¿Qué pasa si cambia el stock y falla el movimiento?</p>
+<p><b>Respuesta:</b> son escrituras separadas. Hay una compensación local de mejor esfuerzo (probada: revierte y devuelve 500), pero puede fallar o no ejecutarse si el proceso se cae, y entonces el saldo y el libro divergen.<br>
+<b>Repregunta:</b> ¿Mongo no es atómico? Una escritura sobre un documento sí lo es; dos documentos distintos no forman una transacción. Para eso Mongo necesita un replica set: el nuestro es standalone.</p>
+
+<p class="q">13. ¿Cancelar devuelve siempre el stock?</p>
+<p><b>Respuesta:</b> no. <b>Lo reprodujimos:</b> cancelamos a los 400 ms y la orden quedó CANCELADA con 3 unidades consumidas y sin reposición. El ítem todavía estaba PENDIENTE, así que quedó fuera de la compensación.<br>
+<b>Repregunta:</b> ¿reiniciar lo resuelve? No. Medido: una orden huérfana después de un crash queda PENDIENTE para siempre. Falta un reconciliador durable.</p>
+
+<p class="q">14. ¿Un usuario con JWT válido puede romper el flujo?</p>
+<p><b>Respuesta:</b> sí, y <b>lo hicimos</b>: un descuento con una orden inventada da 200 y una reposición de una orden finalizada también da 200. Identidad válida no equivale a autorización para cualquier efecto.<br>
+<b>Repregunta:</b> ¿alcanza con ocultar la ruta en Swagger? No: HTTP la sigue aceptando. Se necesita autorización de servicio a servicio, ligada al estado de la orden.</p>
+
+<p class="q">15. ¿Timeout, sobrecarga e inconsistencia son lo mismo?</p>
+<p><b>Respuesta:</b> no. Timeout es una espera agotada; sobrecarga, demanda mayor que la capacidad; inconsistencia, una relación de datos violada. <b>Medido:</b> con 1000 usuarios leyendo hubo 0 errores, pero la mediana subió a 1,2 s (sobrecarga sin inconsistencia). Con un timeout hacia inventory el ítem quedó INCIERTO, y la reposición consultó el libro y devolvió bien el stock: el servidor puede escribir aunque el cliente deje de esperar.<br>
+<b>Repregunta:</b> ¿repetimos el POST? Primero hay que consultar órdenes y movimientos: no hay idempotencia en el alta (medido: el doble POST creó dos órdenes). <b>Ahora sí tenemos cifras</b>: ~600–800 lecturas/s, ~130 órdenes/s y ~1,8 logins/s (§5).</p>
+
+<div class="box"><b>Frase para recordar:</b> «Podemos explicar qué controles implementamos, dónde termina cada garantía y <b>lo medimos</b>. Primero verificamos qué efecto se confirmó; después decidimos cómo recuperar».</div>
+</div>
+
+<!-- 5 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>5. Números medidos (12/11/2026)</h1>
+<p>Docker en una PC de 12 hilos; el generador de carga corría en la misma máquina y le quitaba CPU. Los usuarios virtuales son en lazo cerrado: cada uno pide, espera la respuesta y vuelve a pedir.</p>
+<div class="cols">
+<div>
+<h3>Lecturas (GET de vehículos y repuestos)</h3>
+<table><tr><th class="n">Usuarios</th><th class="n">req/s</th><th class="n">p50</th><th class="n">p95</th><th class="n">p99</th><th class="n">Errores</th></tr>
+<tr><td class="n">1</td><td class="n">117</td><td class="n">7 ms</td><td class="n">18 ms</td><td class="n">34 ms</td><td class="n">0</td></tr>
+<tr><td class="n">10</td><td class="n">490</td><td class="n">17 ms</td><td class="n">44 ms</td><td class="n">58 ms</td><td class="n">0</td></tr>
+<tr><td class="n">50</td><td class="n">774</td><td class="n">52 ms</td><td class="n">126 ms</td><td class="n">184 ms</td><td class="n">0</td></tr>
+<tr><td class="n">100</td><td class="n">573</td><td class="n">150 ms</td><td class="n">344 ms</td><td class="n">720 ms</td><td class="n">0</td></tr>
+<tr><td class="n">250</td><td class="n">589</td><td class="n">379 ms</td><td class="n">787 ms</td><td class="n">1,4 s</td><td class="n">0</td></tr>
+<tr><td class="n">500</td><td class="n">606</td><td class="n">712 ms</td><td class="n">1,1 s</td><td class="n">5,4 s</td><td class="n">0</td></tr>
+<tr><td class="n">1000</td><td class="n">630</td><td class="n">1,2 s</td><td class="n">4,8 s</td><td class="n">9,3 s</td><td class="n">0</td></tr></table>
+<p>Pasados los ~50 usuarios no rinde más: solo crece la cola (ley de Little: L = λ·W). El cuello es el <b>gateway</b>, un proceso Node al 93 % de un núcleo.</p>
+</div>
+<div>
+<h3>Logins simultáneos (bcrypt costo 12)</h3>
+<table><tr><th class="n">Logins</th><th class="n">Tiempo</th><th class="n">p50</th><th>Resultado</th></tr>
+<tr><td class="n">1</td><td class="n">0,6 s</td><td class="n">589 ms</td><td>1 OK</td></tr>
+<tr><td class="n">10</td><td class="n">5,7 s</td><td class="n">5,1 s</td><td>10 OK</td></tr>
+<tr><td class="n">25</td><td class="n">13,4 s</td><td class="n">9,4 s</td><td>25 OK</td></tr>
+<tr><td class="n">50</td><td class="n">15,1 s</td><td class="n">11,2 s</td><td class="bad">35 OK, 15 × 503</td></tr>
+<tr><td class="n">100</td><td class="n">15,1 s</td><td class="n">15,1 s</td><td class="bad">25 OK, 75 × 503</td></tr></table>
+<p>Rinde ~1,8 logins/s. El 503 aparece cuando la espera supera el timeout del gateway (15 s). Mientras dura la ráfaga, <code>/me</code> llega a tardar hasta 15 s: <b>bcrypt bloquea el event loop de auth</b>.</p>
+</div>
+</div>
+<div class="cols">
+<div>
+<h3>Órdenes con repuestos distintos</h3>
+<table><tr><th class="n">Usuarios</th><th class="n">Órdenes/s (demora 1 s)</th><th class="n">Órdenes/s (demora 0)</th><th class="n">p50 (demora 0)</th></tr>
+<tr><td class="n">1</td><td class="n">1,0</td><td class="n">23</td><td class="n">39 ms</td></tr>
+<tr><td class="n">10</td><td class="n">9,2</td><td class="n">59</td><td class="n">159 ms</td></tr>
+<tr><td class="n">50</td><td class="n">39</td><td class="n">93</td><td class="n">519 ms</td></tr>
+<tr><td class="n">100</td><td class="n">63</td><td class="n">134</td><td class="n">663 ms</td></tr></table>
+<p>0 errores, invariantes OK. Workorders queda al 100 % de CPU. La «demora 1 s» es <code>DEMO_DELAY_MS</code>, que compose pone a propósito para que la carrera se vea en clase.</p>
+</div>
+<div>
+<h3>Todos sobre el mismo repuesto</h3>
+<table><tr><th class="n">Simultáneos</th><th>Demora 1 s (OK / 409)</th><th>Demora 0 (OK / 409)</th></tr>
+<tr><td class="n">10</td><td>1 / 9</td><td>4 / 6</td></tr>
+<tr><td class="n">50</td><td>1 / 49</td><td>31 / 19</td></tr>
+<tr><td class="n">100</td><td><b>1 / 99</b></td><td>41 / 59</td></tr></table>
+<p>El stock final siempre fue correcto. Con <b>stock 5 y 30 clientes reintentando</b>, se concretaron <b>5 órdenes, se rechazaron 25 y el stock terminó en 0</b>.</p>
+</div>
+</div>
+<h3>Caídas</h3>
+<table><tr><th>Se cae…</th><th>Deja de andar</th><th>Sigue andando</th></tr>
+<tr><td>auth</td><td>Los logins nuevos (503)</td><td>Todo lo demás con tokens ya emitidos</td></tr>
+<tr><td>inventory</td><td>Repuestos; órdenes con repuestos (503, no queda orden registrada)</td><td>Vehículos y órdenes sin repuestos</td></tr>
+<tr><td>redis</td><td>Toda escritura de stock (503, nada descontado)</td><td>Lecturas de stock</td></tr>
+<tr><td>vehicles</td><td>Crear órdenes (503)</td><td>Historial y repuestos</td></tr>
+<tr><td>workorders a mitad de una orden</td><td class="bad">Orden huérfana PENDIENTE; cancelarla no repone (H05)</td><td>—</td></tr>
+<tr><td>inventory a mitad de una orden</td><td>Orden FALLIDA, reposición PENDIENTE</td><td><code>/reponer</code> al volver → COMPLETA</td></tr>
+<tr><td>reinicio completo</td><td>~8 s hasta healthy</td><td>Datos y tokens intactos</td></tr></table>
+<p class="nota">Un contenedor detenido tarda ~5 s en dar 503 (resolución DNS de Docker). Todas las cifras son de una sola PC: sirven para razonar cuellos de botella, no como SLA.</p>
+</div>
+
+<!-- 6 -->
+<div class="page apretada">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>6. Preguntas «¿y si…?» con respuesta medida</h1>
+
+<p class="q">¿Cada cuánto «se sale» el login?</p>
+<p>Hay dos relojes:</p>
+<ul>
+<li><b>Access token (JWT):</b> dura <code>JWT_EXPIRES_IN</code>, que es <b>5 min</b> por defecto en el código, en <code>.env.example</code>, en compose y en Swagger. Al vencer, cualquier pedido da <b>401</b>.</li>
+<li><b>Sesión (refresh token):</b> vence tras <b>15 min sin renovarse</b> (<code>SESSION_IDLE</code>). Es un vencimiento deslizante: cada <code>/refresh</code> lo reinicia y no hay un máximo absoluto.</li>
+</ul>
+<p>Swagger no renueva solo. Por eso, con el access en 5 min, cada 5 min hay que llamar a <code>POST /api/auth/refresh</code> con el refreshToken y volver a pulsar Authorize. Si pasan 15 min sin renovar, hay que loguearse de nuevo. </p><div class="box"><b>Lo que dejamos configurado:</b> <code>JWT_EXPIRES_IN=12h</code> y <code>SESSION_IDLE=12h</code> en el <code>.env</code> de la raíz (sin tocar código). Se aplica con <code>docker compose up -d --wait auth-service</code> y un login nuevo. Verificado: <code>expiresIn=43200</code>. Para volver a 5 min, se borran esas dos líneas. Instructivo: README raíz → «Cambiar cuánto dura la sesión».</div>
+<p><b>Prueba real</b>, con tiempos escalados 1:30 (access de 10 s = 5 min, inactividad de 30 s = 15 min):</p>
+<table><tr><th>Momento</th><th>Acción</th><th>Resultado</th></tr>
+<tr><td>0 s</td><td>login y GET con el access</td><td class="ok">200</td></tr>
+<tr><td>12 s</td><td>el mismo access, ya vencido</td><td class="bad">401</td></tr>
+<tr><td>12 s</td><td>/refresh, y GET con el access nuevo</td><td class="ok">200 / 200</td></tr>
+<tr><td>32 → 92 s</td><td>/refresh cada 20 s (uso activo durante 80 s, más que el límite de 30 s)</td><td class="ok">200 ×4: la sesión sigue viva</td></tr>
+<tr><td>127 s</td><td>/refresh después de 35 s sin uso</td><td class="bad">401 «Sesión no válida»</td></tr></table>
+<p><b>¿Cada 5 min hay que volver a loguearse? No.</b> El login entrega dos tokens. En una app real, el frontend llama solo a <code>/refresh</code> antes de que venza el access y el usuario no nota nada. Solo vuelve a loguearse si deja la app sin usar más que <code>SESSION_IDLE</code>, como el «sesión cerrada por inactividad» de un banco. El access es corto porque <b>no se puede revocar</b>: los servicios lo validan solo con la firma, así que un token robado o usado después del logout (H07) sirve hasta que vence. El refresh sí se revoca: con el logout, y si alguien lo reusa (medido: de 5 refresh concurrentes con el mismo token se acepta 1 y la sesión se revoca). Lo molesto era <b>Swagger</b>, que no renueva solo.</p>
+<table><tr><th>Caso</th><th>Configuración</th><th>Resultado</th></tr>
+<tr><td>App real con frontend</td><td>access <code>5m</code> · inactividad <code>12h</code></td><td>Seguro y sin molestias mientras se use</td></tr>
+<tr><td>Demo por Swagger (lo que usamos)</td><td>access <code>12h</code> · inactividad <code>12h</code></td><td>Cómodo; un token robado vale hasta 12 h</td></tr></table>
+<p><b>Frase:</b> «El access es corto por seguridad y un frontend lo renovaría sin que el usuario lo note. Como la demo es por Swagger, lo alargamos por configuración, sabiendo que eso agranda la ventana de H07».</p>
+
+<p class="q">¿Y si entran 1000 usuarios?</p>
+<p>Si ya están logueados y leen: 0 errores, pero la mediana sube a 1,2 s y el p99 a 9 s. Si todos hacen login a la vez, auth procesa ~1,8 por segundo y el resto recibe 503 a los 15 s. <b>Mejoras:</b> bcrypt nativo o costo 10, varias réplicas de auth y del gateway, y rate limit en el login.</p>
+<p class="q">¿Y si hay muchas órdenes acumuladas?</p>
+<p><code>GET /api/ordenes</code> devuelve todo: con 5481 órdenes son 4,4 MB y con 10 usuarios la mediana es de 7 s. <b>Mejora:</b> paginación con <code>limit/skip</code> o cursor, más índices.</p>
+<p class="q">¿Y si dos mecánicos piden el último repuesto?</p>
+<p>Uno lo obtiene y el otro recibe 409; nunca queda stock negativo (medido con 2, 10, 50 y 100 pedidos). El que pierde no queda en espera: debe reintentar.</p>
+<p class="q">¿Y si mandan un número gigante o un cuerpo enorme?</p>
+<p>El ingreso de 2^53+1 se acepta con pérdida de precisión, porque falta un tope (validar <code>Number.isSafeInteger</code> y un máximo razonable). Un cuerpo de más de 1 MB da 500 en lugar de 413. <b>Son fallas reales: decirlo y proponer el arreglo.</b></p>
+<p class="q">¿Y si alguien entra a la red interna?</p>
+<p>Puede leer las bases sin credenciales (medido: desde un contenedor se lee inventory-db). En el laboratorio la red de Docker es el único perímetro. <b>Mejora:</b> autenticación en Mongo y Redis, una red por servicio y TLS interno.</p>
+<p class="q">¿Por qué no 2PC? ¿Qué elegiste en CAP?</p>
+<p>2PC bloquea si cae el coordinador y requiere participantes que lo soporten. Elegimos una saga con compensación (DESCUENTO → REPOSICION). Para el stock elegimos consistencia antes que disponibilidad (CP): si Redis cae, no se descuenta (503).</p>
+</div>
+
+<!-- 7 -->
+<div class="page">
+<div class="hdr">TORQUE / REPASO PARA LA DEFENSA · ACTUALIZADO</div>
+<h1>7. Ensayo y último repaso</h1>
+<h3>Guion de 13 minutos</h3>
+<p>0-1: problema y alcance. 1-4: recorrido funcional en Swagger. 4-6: arquitectura. 6-8: datos, lock y permisos. 8-10: Docker, logs y un 401/403 esperado. 10-12: <b>números medidos</b> (§5), límites y mejoras prioritarias. 12-13: cierre. Una persona opera y otra observa estados y logs.</p>
+<h3>Demostración mínima que deben ensayar</h3>
+<ol>
+<li>Login y Authorize sin proyectar secretos.</li>
+<li>Consultar un vehículo y un repuesto con stock suficiente. <span class="nuevo">OJO</span><b>Usar BUJ-NGK-001 (stock 8)</b>. FIL-ACE-001 tiene stock 1 en la semilla y la segunda orden falla.</li>
+<li>Crear una orden con un solo repuesto, cantidad 1, y comprobar 201 y EN_PROCESO. Tarda ~1 s por <code>DEMO_DELAY_MS</code>.</li>
+<li>Mostrar el descuento, el movimiento y el historial; finalizar la orden.</li>
+<li>En otra orden ya EN_PROCESO, cancelar con motivo y comprobar la reposición COMPLETA.</li>
+<li>Mostrar una consulta sin token (401) o una acción sin permiso (403).</li>
+</ol>
+<h3>Antes de entrar a exponer</h3>
+<ul>
+<li>Correr el ensayo automático en la máquina real. Debe terminar en «Todo OK»; crea 2 órdenes de prueba:<br><code>GW=http://localhost:3000 PROYECTO=torque node scripts/defensa/ensayo-demo.mjs</code></li>
+<li>En el <code>.env</code> de esa máquina, poner <code>JWT_EXPIRES_IN=12h</code> y <code>SESSION_IDLE=12h</code>, después <code>docker compose up -d --wait auth-service</code> y loguearse de nuevo. El script imprime el valor activo. Si te preguntan: «el default es 5 min; lo alargamos a propósito y su costo es H07».</li>
+<li><code>LAB_ENDPOINTS=false</code>. Docker y Compose funcionando, Swagger accesible, cuentas ADMIN y MECANICO, datos ficticios, logs y request IDs disponibles.</li>
+<li><b>No correr pruebas de carga ni de caídas en la máquina de la demo:</b> los scripts están pensados para el stack descartable (<code>torque-defensa</code>, puerto 3100).</li>
+</ul>
+<h3>Si algo falla: observar antes de repetir</h3>
+<p><b>400/401/403/409:</b> leer el cuerpo y explicar si es validación, identidad, permiso o conflicto. Un 409 «Recurso ocupado» significa que otro pedido tiene el lock: esperar 1 s y reintentar.<br>
+<b>500/503/timeout:</b> no mandar más POST, anotar la hora y el request ID, y revisar salud, logs, orden y movimientos. Si un contenedor está detenido, el 503 tarda ~5 s.<br>
+<b>Reposición pendiente:</b> <code>POST /api/ordenes/:id/reponer</code> (probado: la deja COMPLETA). No forzar estados en Mongo.</p>
+<h3>Cinco trampas para practicar juntos</h3>
+<p><b>Doble clic:</b> crea dos órdenes (medido). <b>Logout:</b> el access sigue dando 200 (medido). <b>Cancelar durante la creación:</b> el stock queda consumido (medido). <b>Volumen:</b> no es un backup (mongodump probado). <b>Healthy:</b> no demuestra inicialización completa; con Redis caído, inventory reporta «degraded».</p>
+<div class="box"><b>Cierre sugerido.</b> «Torque demuestra separación por dominios, permisos, estados y trazabilidad, y lo medimos: aguanta ~600–800 lecturas y ~130 órdenes por segundo en una PC, nunca deja el stock negativo con el lock vigente, y cada caída afecta solo a su dominio. Sus principales mejoras pendientes son atomicidad del inventario, autorización de operaciones internas, recuperación durable, login más liviano y paginación».</div>
+<p class="nota">Base: auditoría del 12/11/2026 (commit 625d7213) más las pruebas en Docker del mismo día. Scripts en <code>scripts/defensa/</code>, resultados crudos en <code>docs/defensa/resultados/</code> y matriz E01–E42 / X01–X35 en <code>docs/defensa/PLAN-RESULTADOS.md</code>. Rama <code>defensa/pruebas-carga-2026-11-12</code>; el código del producto no se modificó.</p>
+</div>
+
+</body>
+</html>

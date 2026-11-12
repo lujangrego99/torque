@@ -315,6 +315,46 @@ Matriz de acceso completa (actualizada con las correcciones): [docs/correcciones
 para las dos obligatorias. Sin ellas, `docker compose up` no arranca y muestra
 qué falta.
 
+### Cambiar cuánto dura la sesión
+
+Se configura en el **`.env` de la raíz del repo** (no versionado), sin tocar código.
+Hay dos relojes:
+
+| Variable | Qué controla | Default (requisito 3) | Formato |
+|---|---|---|---|
+| `JWT_EXPIRES_IN` | cuánto vale el **access token**: al vencer, todo da 401 | `5m` | `30s`, `5m`, `1h`, `12h`, `7d` |
+| `SESSION_IDLE` | cuánto puede pasar **sin `/refresh`** antes de que la sesión venza | `15m` | `15m`, `12h`… |
+
+Ejemplo, una jornada de trabajo sin volver a loguearse:
+
+```bash
+# en .env
+JWT_EXPIRES_IN=12h
+SESSION_IDLE=12h
+```
+
+Para aplicarlo, recrear **solo auth** (`restart` no relee el `.env`) y **volver a loguearse**;
+los tokens ya emitidos conservan su vencimiento original:
+
+```bash
+docker compose up -d --wait auth-service
+docker compose logs auth-service | grep vence=     # → vence=12h · inactividad=43200s
+```
+
+En la respuesta del login, `expiresIn` (segundos) lo confirma: `43200` = 12 h, `300` = 5 min.
+
+**Costo:** el access token no se puede revocar (los servicios lo validan solo con la firma).
+Con 12 h, un token robado o usado después del logout sirve hasta 12 h; con 5 min, como mucho 5.
+**Renovar no es volver a loguearse.** En una app real, el frontend llama a `/refresh` solo,
+antes de que venza el access, y el usuario no nota nada; recién vuelve a loguearse si
+deja la app sin usar más que `SESSION_IDLE`. Lo molesto con 5 min es **Swagger**, que no
+renueva solo.
+
+| Caso | Configuración recomendada | Resultado |
+|---|---|---|
+| App real con frontend | `JWT_EXPIRES_IN=5m` · `SESSION_IDLE=12h` | seguro y sin molestias mientras se use |
+| Uso manual por Swagger / demo | `JWT_EXPIRES_IN=12h` · `SESSION_IDLE=12h` | cómodo; un token robado vale hasta 12 h |
+
 ### Dar de alta, loguearse, usar y renovar el token
 
 ```bash

@@ -1,0 +1,13 @@
+# S1 — 2026-11-12T19:16:48.893Z — gateway http://localhost:3100
+
+################ S1
+t=  0s  login (expiresIn=10s) → 200
+t=  0s  GET /api/vehiculos con access → 200
+t= 12s  mismo access a los 12 s (vencido) → 401
+t= 12s  POST /refresh → 200
+t= 12s  access nuevo → 200
+t= 32s  refresh con uso activo (cada 20 s) → 200
+t= 52s  refresh con uso activo (cada 20 s) → 200
+t= 72s  refresh con uso activo (cada 20 s) → 200
+t= 92s  refresh con uso activo (cada 20 s) → 200
+t=127s  refresh tras 35 s inactivo: Sesión no válida. → 401

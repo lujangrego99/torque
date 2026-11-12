@@ -9,7 +9,8 @@ import { fileURLToPath } from "node:url";
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const GW = process.env.GW || "http://localhost:3100";
 export const PROYECTO = process.env.PROYECTO || "torque-defensa";
-export const SALIDA = join(RAIZ, "docs", "defensa", "resultados");
+// El panel manda su salida a otra carpeta para no pisar la evidencia de la defensa.
+export const SALIDA = process.env.SALIDA || join(RAIZ, "docs", "defensa", "resultados");
 mkdirSync(SALIDA, { recursive: true });
 
 // --- .env (la contraseña del admin nunca se imprime) ----------------------
@@ -152,8 +153,9 @@ export async function rafaga(n, fn) {
 // --- Docker -------------------------------------------------------------------
 const envCompose = () => ({
   ...process.env,
-  GATEWAY_HTTP_PORT: process.env.GATEWAY_HTTP_PORT || "3100",
-  GATEWAY_HTTPS_PORT: process.env.GATEWAY_HTTPS_PORT || "3543",
+  // El stack de la demo («torque») publica 3000/3443; el descartable, 3100/3543.
+  GATEWAY_HTTP_PORT: process.env.GATEWAY_HTTP_PORT || (PROYECTO === "torque" ? "3000" : "3100"),
+  GATEWAY_HTTPS_PORT: process.env.GATEWAY_HTTPS_PORT || (PROYECTO === "torque" ? "3443" : "3543"),
 });
 export function compose(args, extraEnv = {}) {
   return execSync(`docker compose -p ${PROYECTO} ${args}`, {
