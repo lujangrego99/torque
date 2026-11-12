@@ -1,0 +1,10 @@
+# K5-cae-workorders-db — 2026-11-12T16:55:06.483Z — gateway http://localhost:3100
+
+################ K5-cae-workorders-db
+workorders-db detenida. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=degraded{"mongo":"down"} auth=ok{"mongo":"up"}
+  GET /api/ordenes                → 503 «Servicio no disponible.» (5015 ms)
+  GET /api/vehiculos              → 200  (24 ms)
+  GET /api/repuestos              → 200  (17 ms)
+Base levantada. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=degraded{"mongo":"down"} auth=ok{"mongo":"up"}
+  GET /api/ordenes                → 200  (1025 ms)
+⇒ Base por servicio: la caída de una base afecta solo a su dominio (aislamiento de fallas).

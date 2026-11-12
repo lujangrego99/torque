@@ -1,0 +1,9 @@
+# K6-muere-workorders-a-mitad-de-orden — 2026-11-12T16:55:24.646Z — gateway http://localhost:3100
+
+################ K6-muere-workorders-a-mitad-de-orden
+workorders-service MATADO (SIGKILL) a los 400 ms, con el descuento remoto en curso.
+  respuesta al cliente → 503 «Servicio no disponible.» (735 ms)
+Tras reiniciar: orden PENDIENTE, ítem PENDIENTE; libro [DESCUENTO -2]; stock 10 → 8
+⇒ H05 REPRODUCIDO: orden huérfana PENDIENTE con stock descontado. Nadie la retoma solo (no hay worker de reconciliación).
+Recuperación manual: cancelar → 200, reposición NO_REQUERIDA, stock → 8
+  (la reposición consulta el libro de inventory: aunque el ítem diga PENDIENTE, si hay DESCUENTO en el libro... ver resultado)

@@ -1,0 +1,7 @@
+# R-H03-descuento-directo-sin-orden — 2026-11-12T16:52:34.223Z — gateway http://localhost:3100
+
+################ R-H03-descuento-directo-sin-orden
+Un MECANICO llama directo a inventory (vía gateway) con un ordenId que NO existe (aaaaaaaaaaaaaaaaaaaaaaaa):
+  POST /api/repuestos/:id/descontar → 200; stock 10 → 6
+Además: orden real FINALIZADA (repuestos ya usados en el auto) y el dueño pide reposición directa:
+  orden FINALIZADA; POST /api/repuestos/reposiciones → 200; stock 4 → 6 (volvieron repuestos que se usaron)

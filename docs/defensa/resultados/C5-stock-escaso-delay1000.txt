@@ -1,0 +1,7 @@
+# C5-stock-escaso-delay1000 — 2026-11-12T16:50:51.125Z — gateway http://localhost:3100
+
+################ C5-stock-escaso-delay1000
+DEMO_DELAY_MS=1000. Repuesto con stock 5. 30 clientes crean órdenes de 1 unidad y reintentan si les toca «ocupado».
+Esperado: exactamente 5 órdenes EN_PROCESO, 25 rechazadas por stock insuficiente, stock final 0, nunca negativo.
+Resultado: 5 órdenes OK, 25 rechazadas por stock, stock final 0, 639 pedidos HTTP en total (reintentos por lock ocupado), 5.6s.
+Invariantes: OK

@@ -1,0 +1,6 @@
+# R-H15-doble-post — 2026-11-12T16:53:07.780Z — gateway http://localhost:3100
+
+################ R-H15-doble-post
+Mismo cuerpo dos veces seguidas → 201 (6af5eef6343516c42cfc044e) y 201 (6af5eef7343516c42cfc0453); stock 10 → 8
+Los dos a la vez (doble clic real):
+  → 201 y 409 (el lock frena el segundo descuento, pero queda una orden FALLIDA extra registrada)

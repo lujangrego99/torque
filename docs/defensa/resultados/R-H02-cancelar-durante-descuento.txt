@@ -1,0 +1,12 @@
+# R-H02-cancelar-durante-descuento — 2026-11-12T16:52:06.892Z — gateway http://localhost:3100
+
+################ R-H02-cancelar-durante-descuento
+Con DEMO_DELAY_MS=1000 el descuento tarda ~1 s. Se crea la orden y a los 400 ms se cancela.
+A los 400 ms la orden está PENDIENTE; ítem PENDIENTE. Se cancela:
+  cancelar → 200; reposición={"estado":"NO_REQUERIDA","unidades":0,"fecha":"2026-11-12T16:52:08.802Z","intentos":1}
+  respuesta del POST original → 409 La orden se canceló mientras se registraba.
+Estado final: orden CANCELADA, ítem PENDIENTE, reposición NO_REQUERIDA
+Libro de la orden: [DESCUENTO -3]   stock 10 → 7
+⇒ H02 REPRODUCIDO: orden CANCELADA con 3 unidades consumidas y sin reposición.
+Invariantes detectan el problema: ["orden 6af5eeb8343516c42cfc0417 CANCELADA: libro neto -3 (stock consumido sin reponer)"]
+¿Reintento de reposición? POST /api/ordenes/:id/reponer → 409 No hay reposición pendiente. ["Estado: CANCELADA, reposición: NO_REQUERIDA."]

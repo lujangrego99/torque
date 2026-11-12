@@ -1,0 +1,7 @@
+# K7-muere-inventory-a-mitad-de-orden — 2026-11-12T16:55:33.788Z — gateway http://localhost:3100
+
+################ K7-muere-inventory-a-mitad-de-orden
+inventory MATADO durante el 2º descuento. Respuesta → 503 «No se pudo completar la orden: dependencia no disponible.» (1770 ms)
+  orden FALLIDA; ítems DESCONTADO, RECHAZADO; reposición PENDIENTE
+inventory levantado. Reintento POST /api/ordenes/:id/reponer → 200; reposición COMPLETA; ítems REPUESTO, RECHAZADO
+Invariantes: OK (stock y libro cuadran)

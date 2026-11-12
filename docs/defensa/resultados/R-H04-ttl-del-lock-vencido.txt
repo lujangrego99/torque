@@ -1,0 +1,9 @@
+# R-H04-ttl-del-lock-vencido — 2026-11-12T16:52:39.084Z — gateway http://localhost:3100
+
+################ R-H04-ttl-del-lock-vencido
+Se reconfigura inventory con LOCK_TTL_MS=300 y DEMO_DELAY_MS=1000 (TTL < duración de la sección crítica).
+Equivale a una pausa larga (GC, CPU saturada, Mongo lento) con el TTL por defecto de 8 s.
+Orden A → 201, orden B → 201; stock inicial 1 → final -1
+⇒ H04 REPRODUCIDO: sobreventa, stock NEGATIVO.
+Control con TTL por defecto (8000 ms), misma secuencia:
+  A → 201, B → 409 (Recurso ocupado. Otra operación está modificando el stock del repuesto 6af5eeeb8c0d86a3cb1b50c4. Reintentar.); stock 1 → 0

@@ -1,0 +1,6 @@
+# C6-listado-sin-paginar — 2026-11-12T16:57:50.979Z — gateway http://localhost:3100
+
+################ C6-listado-sin-paginar
+GET /api/ordenes → 5481 órdenes, 4.4 MB, 901 ms
+10 usuarios listando a la vez → 1.1 req/s, p50=7183 ms, max=9952 ms
+Comparación: GET /api/repuestos/movimientos?limite=500 (sí tiene tope) → 55 ms

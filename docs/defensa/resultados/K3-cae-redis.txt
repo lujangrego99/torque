@@ -1,0 +1,11 @@
+# K3-cae-redis — 2026-11-12T16:54:41.682Z — gateway http://localhost:3100
+
+################ K3-cae-redis
+redis detenido. Salud: vehicles=ok{"mongo":"up"} inventory=degraded{"mongo":"up","redis":"down"} workorders=ok{"mongo":"up"} auth=ok{"mongo":"up"}
+  GET /api/repuestos (lectura, va a Mongo) → 200  (21 ms)
+  POST orden con repuesto         → 503 «No se pudo completar la orden: dependencia no disponible.» (25 ms) estado FALLIDA ítem RECHAZADO
+  POST ingreso de mercadería      → 503 «No se pudo coordinar el acceso al recurso.» (10 ms)
+redis levantado. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=ok{"mongo":"up"} auth=ok{"mongo":"up"}
+  POST orden con repuesto         → 201  (1032 ms)
+Invariantes: OK
+⇒ Sin Redis no hay exclusión mutua: el sistema PREFIERE rechazar (503) antes que escribir stock sin lock. Lecturas siguen.

@@ -1,0 +1,10 @@
+# K1-cae-auth-service — 2026-11-12T16:54:07.169Z — gateway http://localhost:3100
+
+################ K1-cae-auth-service
+auth-service detenido. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=ok{"mongo":"up"} auth=down
+  login nuevo                    → 503 «Servicio no disponible.» (5029 ms)
+  GET /api/vehiculos (token ya emitido) → 200  (7 ms)
+  GET /api/repuestos             → 200  (39 ms)
+  POST /api/ordenes sin repuestos→ 201  (19 ms)
+⇒ JWT sin estado: cada servicio valida la firma por su cuenta; sin auth no entra nadie NUEVO, pero los tokens vigentes siguen operando.
+auth-service levantado de nuevo. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=ok{"mongo":"up"} auth=ok{"mongo":"up"}

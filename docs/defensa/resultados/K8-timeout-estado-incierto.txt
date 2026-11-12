@@ -1,0 +1,9 @@
+# K8-timeout-estado-incierto — 2026-11-12T16:55:44.728Z — gateway http://localhost:3100
+
+################ K8-timeout-estado-incierto
+workorders espera a inventory solo 400 ms; el descuento tarda ~1 s.
+  respuesta → 503 «No se pudo completar la orden: dependencia no disponible.» (932 ms)
+  orden FALLIDA; ítem INCIERTO (timeout: sin respuesta en 400 ms); reposición PENDIENTE
+  libro de la orden [REPOSICION 3, DESCUENTO -3]; stock 10 → 10
+Invariantes: OK
+⇒ El timeout NO prueba que no se escribió. El ítem queda INCIERTO; la reposición consulta el libro y bloquea/devuelve.

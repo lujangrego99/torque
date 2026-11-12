@@ -1,0 +1,9 @@
+# C4-repuesto-caliente-delay0 — 2026-11-12T16:50:29.084Z — gateway http://localhost:3100
+
+################ C4-repuesto-caliente-delay0
+DEMO_DELAY_MS=0. N mecánicos crean una orden con el MISMO repuesto (stock 1000) en el mismo instante.
+El descuento toma el lock sin esperar: si está ocupado responde 409 «Recurso ocupado» y la orden queda FALLIDA.
+N=  2 → 201=1  409 ocupado=1  otros={"201":1,"409":1}  stock 1000→999  en 0.0s  invariantes=OK
+N= 10 → 201=4  409 ocupado=6  otros={"201":4,"409":6}  stock 1000→996  en 0.1s  invariantes=OK
+N= 50 → 201=31  409 ocupado=19  otros={"201":31,"409":19}  stock 1000→969  en 0.5s  invariantes=OK
+N=100 → 201=41  409 ocupado=59  otros={"201":41,"409":59}  stock 1000→959  en 0.7s  invariantes=OK

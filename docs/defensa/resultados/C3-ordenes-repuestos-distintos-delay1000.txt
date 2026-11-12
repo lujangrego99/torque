@@ -1,0 +1,23 @@
+# C3-ordenes-repuestos-distintos-delay1000 — 2026-11-12T16:47:31.044Z — gateway http://localhost:3100
+
+################ C3-ordenes-repuestos-distintos-delay1000
+DEMO_DELAY_MS=1000 (retardo artificial entre leer y escribir el stock, con el lock tomado).
+VU=  1  órdenes/s=     1  p50=1026ms p95=1053ms max=1053ms  status={"201":10}
+  invariantes (1 repuestos): OK (stock = libro, sin negativos, órdenes coherentes)
+VU= 10  órdenes/s=   9.2  p50=1072ms p95=1124ms max=1161ms  status={"201":100}
+  invariantes (10 repuestos): OK (stock = libro, sin negativos, órdenes coherentes)
+VU= 50  órdenes/s=    39  p50=1148ms p95=1487ms max=1559ms  status={"201":432}
+  invariantes (50 repuestos): OK (stock = libro, sin negativos, órdenes coherentes)
+VU=100  órdenes/s=    63  p50=1454ms p95=2021ms max=2434ms  status={"201":704}
+docker stats:
+api-gateway	13.18%	76.52MiB / 31.21GiB
+workorders-service	77.80%	122.4MiB / 31.21GiB
+inventory-service	41.65%	79.52MiB / 31.21GiB
+vehicles-service	12.12%	60.25MiB / 31.21GiB
+auth-service	0.07%	52.36MiB / 31.21GiB
+redis	1.16%	2.566MiB / 31.21GiB
+inventory-db	11.41%	75.13MiB / 31.21GiB
+vehicles-db	2.41%	35.04MiB / 31.21GiB
+auth-db	0.30%	26.36MiB / 31.21GiB
+workorders-db	13.98%	65.91MiB / 31.21GiB
+  invariantes (100 repuestos): OK (stock = libro, sin negativos, órdenes coherentes)

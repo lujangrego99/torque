@@ -1,0 +1,10 @@
+# C2-login-concurrente — 2026-11-12T16:45:34.628Z — gateway http://localhost:3100
+
+################ C2-login-concurrente
+Login concurrente: bcryptjs (JS puro) con BCRYPT_ROUNDS=12. Cada login es CPU pura en un solo hilo de auth-service.
+  1 logins a la vez → todos en 0.6s  (1.7 logins/s)  p50=589ms p95=589ms max=589ms  status={"200":1}  | /me durante la ráfaga: p50=155ms max=263ms
+  5 logins a la vez → todos en 2.8s  (1.8 logins/s)  p50=2782ms p95=2806ms max=2806ms  status={"200":5}  | /me durante la ráfaga: p50=68ms max=1989ms
+ 10 logins a la vez → todos en 5.7s  (1.8 logins/s)  p50=5117ms p95=5689ms max=5689ms  status={"200":10}  | /me durante la ráfaga: p50=1079ms max=1558ms
+ 25 logins a la vez → todos en 13.4s  (1.9 logins/s)  p50=9439ms p95=13300ms max=13340ms  status={"200":25}  | /me durante la ráfaga: p50=550ms max=12592ms
+ 50 logins a la vez → todos en 15.1s  (3.3 logins/s)  p50=11207ms p95=15065ms max=15069ms  status={"200":35,"503":15}  | /me durante la ráfaga: p50=28ms max=15005ms
+100 logins a la vez → todos en 15.1s  (6.6 logins/s)  p50=15066ms p95=15125ms max=15129ms  status={"200":25,"503":75}  | /me durante la ráfaga: p50=710ms max=11370ms

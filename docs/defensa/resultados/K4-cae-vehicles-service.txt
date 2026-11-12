@@ -1,0 +1,9 @@
+# K4-cae-vehicles-service — 2026-11-12T16:54:53.158Z — gateway http://localhost:3100
+
+################ K4-cae-vehicles-service
+vehicles-service detenido. Salud: vehicles=down inventory=ok{"mongo":"up","redis":"up"} workorders=ok{"mongo":"up"} auth=ok{"mongo":"up"}
+  POST orden                      → 503 «Dependencia no disponible.» (2004 ms)
+  órdenes registradas: 5474 → 5474
+  GET /api/ordenes (historial)    → 200  (846 ms)
+  GET /api/repuestos              → 200  (27 ms)
+Levantado. Salud: vehicles=ok{"mongo":"up"} inventory=ok{"mongo":"up","redis":"up"} workorders=ok{"mongo":"up"} auth=ok{"mongo":"up"}

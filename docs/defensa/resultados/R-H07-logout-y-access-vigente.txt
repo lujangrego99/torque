@@ -1,0 +1,6 @@
+# R-H07-logout-y-access-vigente — 2026-11-12T16:53:03.723Z — gateway http://localhost:3100
+
+################ R-H07-logout-y-access-vigente
+logout → 204
+Después del logout: GET /api/vehiculos con el access viejo → 200 (sigue sirviendo hasta que venza, expiresIn=900s)
+                    POST /api/auth/refresh con el refresh revocado → 401

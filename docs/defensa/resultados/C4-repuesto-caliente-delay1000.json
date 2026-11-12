@@ -1,0 +1,66 @@
+[
+  {
+    "n": 2,
+    "pedidos": 2,
+    "rps": 1.9,
+    "p50": 52,
+    "p95": 1056,
+    "p99": 1056,
+    "max": 1056,
+    "porStatus": {
+      "201": 1,
+      "409": 1
+    },
+    "stockFinal": 999,
+    "ocupado": 1,
+    "problemas": []
+  },
+  {
+    "n": 10,
+    "pedidos": 10,
+    "rps": 9.6,
+    "p50": 93,
+    "p95": 1046,
+    "p99": 1046,
+    "max": 1046,
+    "porStatus": {
+      "201": 1,
+      "409": 9
+    },
+    "stockFinal": 999,
+    "ocupado": 9,
+    "problemas": []
+  },
+  {
+    "n": 50,
+    "pedidos": 50,
+    "rps": 47.7,
+    "p50": 309,
+    "p95": 494,
+    "p99": 1049,
+    "max": 1049,
+    "porStatus": {
+      "201": 1,
+      "409": 49
+    },
+    "stockFinal": 999,
+    "ocupado": 49,
+    "problemas": []
+  },
+  {
+    "n": 100,
+    "pedidos": 100,
+    "rps": 93.6,
+    "p50": 563,
+    "p95": 997,
+    "p99": 1012,
+    "max": 1068,
+    "porStatus": {
+      "201": 1,
+      "409": 99
+    },
+    "stockFinal": 999,
+    "ocupado": 99,
+    "problemas": []
+  }
+]
