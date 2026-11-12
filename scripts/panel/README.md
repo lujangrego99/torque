@@ -13,18 +13,18 @@ cerrada: no acepta comandos libres. Lee la contraseña del admin del `.env` y nu
 
 Para arrancar directamente sobre la demo: `PANEL_DESTINO=demo node scripts/panel/server.mjs`.
 
-| Bloque | Qué permite |
+| Pestaña | Qué permite |
 |---|---|
-| Contenedores | Ver estado, salud, CPU y memoria de los 10 contenedores. Por cada uno: apagar (stop), matar (SIGKILL), congelar (pause) y reiniciar; también prender, apagar o reiniciar todo |
-| Configuración en caliente | Cambiar `DEMO_DELAY_MS`, `LOCK_TTL_MS`, `LAB_ENDPOINTS`, `JWT_EXPIRES_IN`, `SESSION_IDLE`, `BCRYPT_ROUNDS`, timeouts. El panel recrea solo el servicio afectado y muestra el valor **efectivo** (leído del contenedor). «Volver al .env» deshace los cambios |
-| Experimentos | Lecturas con N usuarios, N logins simultáneos, órdenes por segundo, N órdenes sobre el mismo repuesto, invariantes. Gráfico en vivo de req/s, p95 y errores |
-| Escenarios preparados | Carreras H02/H03/H04/H07/H15, caídas (auth, inventory, redis, vehicles, workorders-db, kill a mitad de una orden, timeout, reinicio), ensayo de la demo, vencimiento de sesión y suites TP6/TP7/correcciones |
-| Consola HTTP | Cualquier pedido `/api/...` como ADMIN, MECANICO, sin token o con un token inválido. Muestra status, ms y request ID; «Rastrear rid» muestra por qué servicios pasó |
-| Negocio en vivo (pestaña) | Órdenes por estado, últimas órdenes, stock por repuesto y últimos movimientos del libro, leídos de las bases cada 3 s. Sirve para ver el efecto de una prueba o de una caída en el momento |
-| Bases de datos (pestaña) | **Solo lectura**: las 4 bases (una por servicio), sus colecciones con la cantidad de documentos y los últimos documentos de cada una. Los hashes de contraseñas y de refresh tokens se ocultan |
-| Logs en vivo | `docker compose logs -f` de un servicio, con filtro |
+| Resumen | Diagrama de la arquitectura en vivo: cada contenedor con su luz de estado y CPU; las dependencias caídas se marcan en rojo. Al lado, órdenes por estado, stock y últimos movimientos del libro. Tocar una caja abre su detalle |
+| App | Swagger de Torque dentro del panel. Cuentas de prueba (`demo-admin@torque.local` / `admin-demo-2026`, `demo-mecanico@torque.local` / `mecanico-demo-2026`) con email, contraseña y token para copiar, y «Entrar en Swagger» para autorizar en un clic. La contraseña del admin real del `.env` nunca se muestra |
+| Servicios | Los 10 contenedores con estado, uptime, CPU, memoria y puertos. Apagar, matar (SIGKILL), congelar (pause), reiniciar o prender cada uno. Al tocar una fila: imagen, comando, redes, healthcheck y **variables de entorno** (secretos ocultos) |
+| Configuración | Cambiar en caliente `DEMO_DELAY_MS`, `LOCK_TTL_MS`, `LAB_ENDPOINTS`, `JWT_EXPIRES_IN`, `SESSION_IDLE`, `BCRYPT_ROUNDS` y timeouts; recrea solo el servicio afectado. Al lado, las variables efectivas de cualquier contenedor. «Volver al .env» deshace todo |
+| Pruebas | Experimentos con gráfico en vivo (lecturas, logins, órdenes/s, mismo repuesto, invariantes), carreras H02–H15, caídas, ensayo de la demo, sesión y suites |
+| Datos | Negocio en vivo (órdenes, stock, libro, cada 3 s) y explorador de las 4 bases **de solo lectura** |
+| Consola HTTP | Cualquier pedido `/api/...` como ADMIN, MECANICO, sin token o con token inválido; «Rastrear» muestra el recorrido por los servicios usando el request ID |
+| Logs | Logs en vivo de un servicio o de todos, con filtro |
 
-Atajo: `http://localhost:4000/#negocio` o `#bases` abren directo esa pestaña.
+Enlaces directos: `#app`, `#servicios`, `#servicios:redis` (abre su detalle), `#pruebas`, `#datos`, `#logs`… Atajo de teclado: Alt+1…8.
 
 **Combinar pruebas:** los trabajos corren en paralelo. Ejemplo: lanzar «Lecturas, 200 usuarios, 60 s» y,
 mientras tanto, apagar `redis` o congelar `inventory-service`; el gráfico muestra el efecto en el momento.

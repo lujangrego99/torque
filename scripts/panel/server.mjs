@@ -125,6 +125,26 @@ async function token(rol) {
   return cache[rol].t;
 }
 
+const CUENTAS_DEMO = {
+  ADMIN: { email: "demo-admin@torque.local", password: "admin-demo-2026", nombre: "Admin de demo" },
+  MECANICO: { email: "demo-mecanico@torque.local", password: "mecanico-demo-2026", nombre: "Mecánico de demo" },
+};
+const demoCache = { defensa: {}, demo: {} };
+async function cuentaDemo(rol) {
+  const c = CUENTAS_DEMO[rol], cache = demoCache[destino];
+  if (cache[rol] && cache[rol].exp > Date.now()) return cache[rol].datos;
+  let r = await pedir("POST", "/api/auth/login", { body: { email: c.email, password: c.password }, timeoutMs: 30000 });
+  if (r.status === 401) {
+    const alta = await pedir("POST", "/api/auth/usuarios", { token: await token("ADMIN"), body: { email: c.email, nombre: c.nombre, password: c.password, rol } });
+    if (![201, 409].includes(alta.status)) throw new Error(`no se pudo crear ${c.email} (${alta.status})`);
+    r = await pedir("POST", "/api/auth/login", { body: { email: c.email, password: c.password }, timeoutMs: 30000 });
+  }
+  if (r.status !== 200) throw new Error(`login ${c.email} → ${r.status}${r.status === 401 ? " (la cuenta existe con otra contraseña o está deshabilitada)" : ""}`);
+  const datos = { como: rol, email: c.email, password: c.password, token: r.body.accessToken, venceEnSeg: r.body.expiresIn, rol: r.body.usuario ? r.body.usuario.rol : rol };
+  cache[rol] = { datos, exp: Date.now() + Math.min(r.body.expiresIn * 1000 - 5000, 30 * 60000) };
+  return datos;
+}
+
 // --- Trabajos (procesos hijos con salida en vivo) ------------------------------
 const trabajos = new Map();
 let siguienteId = 1;
@@ -188,18 +208,18 @@ async function estado() {
   try { filas = txt.startsWith("[") ? JSON.parse(txt) : txt.split("\n").filter(Boolean).map((l) => JSON.parse(l)); } catch {}
   const cont = {};
   for (const s of SERVICIOS) cont[s] = { estado: "no existe" };
-  for (const f of filas) if (cont[f.Service]) cont[f.Service] = { estado: f.State, salud: f.Health || "", detalle: f.Status };
+  for (const f of filas) if (cont[f.Service]) cont[f.Service] = { estado: f.State, salud: f.Health || "", detalle: f.Status, puertos: f.Publishers ? f.Publishers.filter((x) => x.PublishedPort).map((x) => `${x.PublishedPort}→${x.TargetPort}`).filter((v, i, a) => a.indexOf(v) === i).join(" ") : "" };
   if (statsCache.destino === destino) for (const [k, v] of Object.entries(statsCache.filas)) if (cont[k]) Object.assign(cont[k], v);
   const h = await pedir("GET", "/health/servicios", { timeoutMs: 6000 });
   let semilla = null;
-  if (h.status === 200) {
+  if (h.body && h.body.servicios) {
     try {
       const t = await token("ADMIN");
       const r = await pedir("GET", "/api/repuestos", { token: t, timeoutMs: 6000 });
       if (Array.isArray(r.body)) semilla = r.body.filter((x) => /^(FIL|PAS|BUJ)-/.test(x.codigo)).map((x) => ({ codigo: x.codigo, stock: x.stock }));
     } catch {}
   }
-  return { destino, destinos: Object.fromEntries(Object.entries(DESTINOS).map(([k, v]) => [k, v.etiqueta])), gw: D().gw, contenedores: cont, salud: h.status === 200 ? h.body : { status: h.status }, semilla, overrides: overrides[destino] };
+  return { destino, destinos: Object.fromEntries(Object.entries(DESTINOS).map(([k, v]) => [k, v.etiqueta])), gw: D().gw, contenedores: cont, salud: h.body && h.body.servicios ? h.body : { status: h.status }, semilla, overrides: overrides[destino] };
 }
 
 async function configActual() {
@@ -223,7 +243,33 @@ async function mongo(base, js) {
 }
 const salidaJson = (expr) => `print(EJSON.stringify(${expr}, {relaxed: true}))`;
 
+// Detalle de un contenedor: env (secretos enmascarados), imagen, puertos, redes, uptime, healthcheck.
+const SECRETO = /SECRET|PASSWORD|PASS|TOKEN|KEY|PRIVATE/i;
+async function detalleServicio(svc) {
+  const r = await run("docker", ["inspect", `${D().proyecto}-${svc}-1`], { timeout: 10000 });
+  if (r.code) return { svc, existe: false };
+  const c = JSON.parse(r.stdout)[0];
+  const env = (c.Config.Env || [])
+    .map((e) => { const i = e.indexOf("="); return [e.slice(0, i), e.slice(i + 1)]; })
+    .filter(([k]) => !/^(PATH|NODE_VERSION|YARN_VERSION|GOSU_VERSION|JSYAML_VERSION|MONGO_|HOME|GLIBC|REDIS_VERSION|REDIS_DOWNLOAD|NPM_)/.test(k))
+    .map(([k, v]) => ({ k, v: SECRETO.test(k) ? (v ? "•••••• (oculto)" : "") : v, secreto: SECRETO.test(k) }))
+    .sort((a, b) => a.k.localeCompare(b.k));
+  const puertos = Object.entries(c.NetworkSettings.Ports || {}).map(([p, h]) => (h && h.length ? `${h[0].HostPort} → ${p}` : `${p} (interno)`));
+  const salud = c.State.Health ? { estado: c.State.Health.Status, ultimo: (c.State.Health.Log || []).slice(-1).map((l) => ({ code: l.ExitCode, salida: String(l.Output || "").trim().slice(0, 200), fin: l.End }))[0] } : null;
+  return {
+    svc, existe: true, estado: c.State.Status, iniciado: c.State.StartedAt, finalizado: c.State.FinishedAt, reinicios: c.RestartCount,
+    imagen: c.Config.Image, creado: c.Created, comando: [...(c.Config.Entrypoint || []), ...(c.Config.Cmd || [])].join(" "),
+    puertos, redes: Object.keys(c.NetworkSettings.Networks || {}).map((n) => n.replace(`${D().proyecto}_`, "")), env, salud,
+    oom: c.State.OOMKilled, exitCode: c.State.ExitCode,
+  };
+}
+
 const rutas = {
+  "GET /api/servicio": async (req, res, url) => {
+    const svc = url.searchParams.get("svc");
+    if (!SERVICIOS.includes(svc)) return json(res, 400, { error: "servicio inválido" });
+    json(res, 200, await detalleServicio(svc));
+  },
   "GET /api/db": async (req, res) => {
     const js = salidaJson("db.getCollectionNames().sort().map(c => ({ col: c, docs: db[c].countDocuments() }))");
     const out = await Promise.all(Object.keys(BASES).map(async (b) => { try { return { base: b, contenedor: BASES[b], colecciones: await mongo(b, js) }; } catch (e) { return { base: b, contenedor: BASES[b], error: e.message }; } }));
@@ -274,7 +320,7 @@ const rutas = {
       }
       return compose(args);
     });
-    if (p.accion === "todo:reset") tokens[destino] = {};
+    if (p.accion === "todo:reset") tokens[destino] = {}; demoCache[destino] = {};
     json(res, r.code ? 500 : 200, { ok: !r.code, segundos: Math.round((Date.now() - ini) / 100) / 10, salida: (r.stdout + r.stderr).trim().split("\n").slice(-6).join("\n") });
   },
   "GET /api/config": async (req, res) => json(res, 200, await configActual()),
@@ -288,7 +334,7 @@ const rutas = {
     else overrides[destino][p.var] = String(p.valor);
     const ini = Date.now();
     const r = await enCola(() => compose(["up", "-d", "--wait", "--no-deps", per.svc]));
-    if (per.svc === "auth-service") tokens[destino] = {};
+    if (per.svc === "auth-service") tokens[destino] = {}; demoCache[destino] = {};
     json(res, r.code ? 500 : 200, { ok: !r.code, segundos: Math.round((Date.now() - ini) / 100) / 10, salida: (r.stdout + r.stderr).trim().split("\n").slice(-4).join("\n") });
   },
   "POST /api/config/restaurar": async (req, res) => {
@@ -297,8 +343,20 @@ const rutas = {
     const svcs = new Set(Object.keys(overrides[destino]).map((k) => PERILLAS[k].svc));
     overrides[destino] = {};
     for (const s of svcs) await enCola(() => compose(["up", "-d", "--wait", "--no-deps", s]));
-    tokens[destino] = {};
+    tokens[destino] = {}; demoCache[destino] = {};
     json(res, 200, { ok: true, recreados: [...svcs] });
+  },
+  // Cuentas de demo para usar la app a mano (pestaña App). Son cuentas de laboratorio con
+  // contraseña conocida; la del admin real del .env nunca sale del servidor.
+  "GET /api/cuentas-demo": async (req, res) => {
+    try { json(res, 200, await Promise.all(Object.keys(CUENTAS_DEMO).map(cuentaDemo))); }
+    catch (e) { json(res, 502, { error: e.message }); }
+  },
+  "POST /api/token": async (req, res) => {
+    const p = await leerCuerpo(req);
+    if (!CUENTAS_DEMO[p.como]) return json(res, 400, { error: "rol inválido" });
+    try { json(res, 200, await cuentaDemo(p.como)); }
+    catch (e) { json(res, 502, { error: e.message }); }
   },
   "GET /api/catalogo": async (req, res) => json(res, 200, Object.fromEntries(Object.entries(CATALOGO).map(([k, v]) => [k, { invasivo: !!v.invasivo }]))),
   "POST /api/trabajos": async (req, res) => {
@@ -350,9 +408,9 @@ function streamTrabajo(req, res, id) {
   req.on("close", () => t.clientes.delete(res));
 }
 function streamLogs(req, res, svc) {
-  if (!SERVICIOS.includes(svc)) return json(res, 400, { error: "servicio inválido" });
+  if (svc !== "todos" && !SERVICIOS.includes(svc)) return json(res, 400, { error: "servicio inválido" });
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
-  const p = spawn("docker", ["compose", "-p", D().proyecto, "logs", "-f", "--no-color", "--tail", "80", svc], { cwd: RAIZ, env: envCompose() });
+  const p = spawn("docker", ["compose", "-p", D().proyecto, "logs", "-f", "--no-color", "--tail", "80", ...(svc === "todos" ? [] : [svc])], { cwd: RAIZ, env: envCompose() });
   const enviar = (d) => { for (const l of d.toString().split("\n")) if (l) res.write(`data: ${JSON.stringify(l)}\n\n`); };
   p.stdout.on("data", enviar);
   p.stderr.on("data", enviar);
@@ -379,6 +437,23 @@ function autorizado(req, res, url) {
   return false;
 }
 
+// La app (Swagger + API de Torque) servida por el panel con el mismo origen: así la pestaña
+// «App» puede incrustarla y autorizarla, y también anda desde otra PC (modo red).
+// Las rutas del panel (/api/estado, /api/docker…) no chocan con las de Torque.
+const APP_PROXY = /^\/(api-docs(\/|$)|api\/(vehiculos|repuestos|ordenes|auth)(\/|$)|health(\/|$)|metrics(\/|$))/;
+function proxyApp(req, res) {
+  const destino = new URL(D().gw);
+  const headers = { ...req.headers, host: destino.host };
+  delete headers.cookie; // la cookie del panel no viaja a Torque
+  const p = http.request({ hostname: destino.hostname, port: destino.port, method: req.method, path: req.url, headers, timeout: 60000 }, (r) => {
+    res.writeHead(r.statusCode, r.headers);
+    r.pipe(res);
+  });
+  p.on("timeout", () => p.destroy(new Error("timeout")));
+  p.on("error", (e) => { if (!res.headersSent) json(res, 502, { error: `La app no responde (${e.code || e.message})` }); else res.end(); });
+  req.pipe(p);
+}
+
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (!autorizado(req, res, url)) return;
@@ -391,6 +466,7 @@ const servidor = http.createServer(async (req, res) => {
     if (m) return streamTrabajo(req, res, m[1]);
     if (url.pathname === "/api/logs/stream") return streamLogs(req, res, url.searchParams.get("svc"));
     const h = rutas[`${req.method} ${url.pathname}`];
+    if (!h && APP_PROXY.test(url.pathname)) return proxyApp(req, res);
     if (!h) return json(res, 404, { error: "no existe" });
     await h(req, res, url);
   } catch (e) {
