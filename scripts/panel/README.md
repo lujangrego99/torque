@@ -20,7 +20,11 @@ Para arrancar directamente sobre la demo: `PANEL_DESTINO=demo node scripts/panel
 | Experimentos | Lecturas con N usuarios, N logins simultáneos, órdenes por segundo, N órdenes sobre el mismo repuesto, invariantes. Gráfico en vivo de req/s, p95 y errores |
 | Escenarios preparados | Carreras H02/H03/H04/H07/H15, caídas (auth, inventory, redis, vehicles, workorders-db, kill a mitad de una orden, timeout, reinicio), ensayo de la demo, vencimiento de sesión y suites TP6/TP7/correcciones |
 | Consola HTTP | Cualquier pedido `/api/...` como ADMIN, MECANICO, sin token o con un token inválido. Muestra status, ms y request ID; «Rastrear rid» muestra por qué servicios pasó |
+| Negocio en vivo (pestaña) | Órdenes por estado, últimas órdenes, stock por repuesto y últimos movimientos del libro, leídos de las bases cada 3 s. Sirve para ver el efecto de una prueba o de una caída en el momento |
+| Bases de datos (pestaña) | **Solo lectura**: las 4 bases (una por servicio), sus colecciones con la cantidad de documentos y los últimos documentos de cada una. Los hashes de contraseñas y de refresh tokens se ocultan |
 | Logs en vivo | `docker compose logs -f` de un servicio, con filtro |
+
+Atajo: `http://localhost:4000/#negocio` o `#bases` abren directo esa pestaña.
 
 **Combinar pruebas:** los trabajos corren en paralelo. Ejemplo: lanzar «Lecturas, 200 usuarios, 60 s» y,
 mientras tanto, apagar `redis` o congelar `inventory-service`; el gráfico muestra el efecto en el momento.

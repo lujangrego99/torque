@@ -87,6 +87,25 @@
   .aviso { background:color-mix(in srgb, var(--bad) 14%, transparent); color:var(--bad); padding:6px 16px; font-weight:600; display:none; }
   body.demo .aviso { display:block; }
   .toast { position:fixed; bottom:14px; right:14px; background:var(--code); color:var(--code-ink); padding:8px 12px; border-radius:8px; max-width:440px; font-size:12.5px; white-space:pre-wrap; display:none; z-index:9; }
+  .tabs { display:flex; gap:4px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .tabs button.on { background:var(--acc); color:var(--acc-ink); border-color:var(--acc); }
+  .nota2 { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .dos { display:grid; grid-template-columns:1fr 1.3fr; gap:10px; }
+  @media (max-width: 800px) { .dos { grid-template-columns:1fr; } }
+  h3 { font-size:12.5px; margin:8px 0 3px; }
+  table.tb { width:100%; border-collapse:collapse; font-size:12px; }
+  table.tb th, table.tb td { text-align:left; padding:2px 5px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.tb th { color:var(--muted); font-weight:600; }
+  table.tb td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .est-EN_PROCESO { color:var(--info); font-weight:600; } .est-FINALIZADA { color:var(--ok); font-weight:600; }
+  .est-CANCELADA { color:var(--warn); font-weight:600; } .est-FALLIDA, .est-PENDIENTE { color:var(--bad); font-weight:600; }
+  .bases { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
+  .base { background:var(--chip); border-radius:8px; padding:6px 8px; font-size:12.5px; }
+  .base b { display:block; margin-bottom:3px; }
+  .base small { color:var(--muted); display:block; margin-bottom:3px; }
+  .base button { display:block; width:100%; text-align:left; margin-top:3px; }
+  .nuevo { animation: brillo 1.6s ease-out; }
+  @keyframes brillo { from { background: color-mix(in srgb, var(--acc) 30%, transparent); } to { background: transparent; } }
   details summary { cursor:pointer; color:var(--muted); font-size:12px; }
 </style>
 </head>
@@ -211,13 +230,30 @@
       <div class="trab" id="trabajos"><span style="color:var(--muted);font-size:12.5px">Todavía no corriste nada. Los trabajos pueden correr a la vez: por ejemplo, carga de lecturas y en medio apagar Redis.</span></div>
     </section>
     <section>
-      <h2 id="tituloSalida">Salida</h2>
+      <div class="tabs"><button id="t-salida" class="on" onclick="pestana('salida')">Salida</button><button id="t-negocio" onclick="pestana('negocio')">Negocio en vivo</button><button id="t-bases" onclick="pestana('bases')">Bases de datos</button><span class="sp"></span><span id="tituloSalida" style="font-size:12px;color:var(--muted)"></span></div>
+      <div id="p-salida">
       <div id="graficos" style="display:none">
         <div class="resumen" id="kpis"></div>
         <svg class="graf" id="graf" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
         <div class="leyenda"><span><i style="background:var(--info)"></i>req/s</span><span><i style="background:var(--acc)"></i>p95 (ms)</span><span><i style="background:var(--bad)"></i>errores/s</span></div>
       </div>
       <pre class="con" id="salida">Elegí o corré un trabajo.</pre>
+      </div>
+      <div id="p-negocio" style="display:none">
+        <div class="nota2">Leído directo de las bases de inventory y workorders cada 3 s. Dejalo abierto mientras corrés una prueba o apagás un servicio.</div>
+        <div class="resumen" id="nEstados"></div>
+        <div class="dos">
+          <div><h3>Stock por repuesto</h3><table class="tb" id="nStock"></table></div>
+          <div><h3>Últimos movimientos del libro</h3><table class="tb" id="nMovs"></table></div>
+        </div>
+        <h3>Últimas órdenes</h3><table class="tb" id="nOrdenes"></table>
+      </div>
+      <div id="p-bases" style="display:none">
+        <div class="nota2">Solo lectura. Cada microservicio tiene <b>su propia base</b> en su propio contenedor; ninguno lee la base de otro (se hablan por HTTP). Los hashes de contraseñas y de refresh tokens aparecen ocultos.</div>
+        <div class="bases" id="bBases">…</div>
+        <div class="fila" id="bSel" style="margin:6px 0;font-size:12.5px"></div>
+        <pre class="con" id="bDocs" style="height:330px">Elegí una colección.</pre>
+      </div>
     </section>
     <section>
       <h2>Logs en vivo <span class="sp"></span>
@@ -315,7 +351,7 @@ async function restaurarConfig() {
 let seleccionado = null, fuente = null, ticks = [];
 async function trabajo(tipo, params = {}) {
   const r = await api("POST", "/api/trabajos", { tipo, params });
-  if (r) { await listarTrabajos(); ver(r.id); }
+  if (r) { pestana("salida"); await listarTrabajos(); ver(r.id); }
 }
 async function listarTrabajos() {
   const l = await fetch("/api/trabajos").then((r) => r.json()).catch(() => []);
@@ -346,7 +382,7 @@ function ver(id) {
   fuente.addEventListener("fin", () => { fuente.close(); listarTrabajos(); });
   listarTrabajos();
   const t = document.querySelector(`#trabajos div.sel span:nth-child(2)`);
-  $("tituloSalida").textContent = "Salida" + (t ? " · " + t.textContent : "");
+  $("tituloSalida").textContent = t ? t.textContent : "";
 }
 function kpi(valor, etiqueta) { return `<div class="kpi"><b>${valor}</b><span>${etiqueta}</span></div>`; }
 function dibujar() {
@@ -414,7 +450,51 @@ function seguirLogs() {
   };
 }
 
+// ---- Pestañas, negocio y bases -------------------------------------------------
+let pestanaActual = "salida", vistos = new Set();
+function pestana(t) {
+  pestanaActual = t;
+  for (const k of ["salida", "negocio", "bases"]) { $("p-" + k).style.display = k === t ? "block" : "none"; $("t-" + k).classList.toggle("on", k === t); }
+  if (t === "negocio") negocio();
+  if (t === "bases") bases();
+}
+const ej = (x) => (x && typeof x === "object" ? x.$date || x.$oid || x : x); // EJSON → valor
+const hhmm = (f) => f ? new Date(ej(f)).toLocaleTimeString("es-AR", { hour12: false }) : "";
+async function negocio() {
+  const r = await fetch("/api/negocio").then((x) => x.json()).catch(() => null);
+  if (!r) return;
+  const inv = r.inventory, wo = r.workorders;
+  if (wo.error) { $("nEstados").innerHTML = `<div class="kpi"><b>—</b><span>workorders-db: ${esc(wo.error)}</span></div>`; }
+  else {
+    const orden = ["PENDIENTE", "EN_PROCESO", "FINALIZADA", "CANCELADA", "FALLIDA"];
+    const m = Object.fromEntries(wo.porEstado.map((x) => [x._id, x.n]));
+    $("nEstados").innerHTML = orden.map((e) => `<div class="kpi"><b class="est-${e}">${m[e] || 0}</b><span>${e}</span></div>`).join("");
+    $("nOrdenes").innerHTML = "<tr><th>hora</th><th>patente</th><th>estado</th><th>ítems</th><th>reposición</th><th>descripción</th></tr>" + wo.ultimas.map((o) => {
+      const clave = ej(o._id) + o.estado, nuevo = !vistos.has(clave); vistos.add(clave);
+      return `<tr class="${nuevo && vistos.size > 15 ? "nuevo" : ""}"><td>${hhmm(o.createdAt)}</td><td>${esc(o.patente || "")}</td><td class="est-${o.estado}">${o.estado}</td><td>${(o.items || []).map((i) => `${i.cantidad}× ${esc(i.codigo || String(i.repuestoId).slice(-4))} <small>${i.estado}</small>`).join("<br>")}</td><td>${o.reposicion ? esc(o.reposicion.estado) : ""}</td><td>${esc((o.descripcion || "").slice(0, 40))}</td></tr>`;
+    }).join("");
+  }
+  if (inv.error) { $("nStock").innerHTML = `<tr><td>inventory-db: ${esc(inv.error)}</td></tr>`; $("nMovs").innerHTML = ""; return; }
+  $("nStock").innerHTML = "<tr><th>código</th><th>nombre</th><th>stock</th></tr>" + inv.repuestos.map((x) => `<tr><td>${esc(x.codigo)}</td><td>${esc((x.nombre || "").slice(0, 26))}</td><td class="n" style="${x.stock < 0 ? "color:var(--bad);font-weight:700" : ""}">${x.stock}</td></tr>`).join("") + (inv.totalRepuestos > inv.repuestos.length ? `<tr><td colspan="3" style="color:var(--muted)">… ${inv.totalRepuestos - inv.repuestos.length} más</td></tr>` : "");
+  $("nMovs").innerHTML = "<tr><th>hora</th><th>código</th><th>tipo</th><th>cant.</th><th>saldo</th></tr>" + inv.movimientos.map((x) => `<tr><td>${hhmm(x.fecha)}</td><td>${esc(x.codigo || "")}</td><td>${x.tipo}</td><td class="n">${x.cantidad > 0 ? "+" : ""}${x.cantidad}</td><td class="n">${x.stockAnterior} → ${x.stockResultante}</td></tr>`).join("");
+}
+async function bases() {
+  const r = await fetch("/api/db").then((x) => x.json()).catch(() => []);
+  $("bBases").innerHTML = r.map((b) => `<div class="base"><b>${b.base}</b><small>contenedor ${b.contenedor}</small>${b.error ? `<span style="color:var(--bad)">no responde: ${esc(b.error.slice(0, 80))}</span>` : b.colecciones.map((c) => `<button onclick="docs('${b.base}','${c.col}')">${c.col} <span style="color:var(--muted)">· ${c.docs}</span></button>`).join("")}</div>`).join("");
+}
+let selDocs = null;
+async function docs(base, col) {
+  selDocs = { base, col };
+  $("bSel").innerHTML = `<b>${base}.${col}</b> · últimos <select id="bN" onchange="docs(selDocs.base, selDocs.col)">${[5, 10, 20, 50].map((x) => `<option ${x === Number(($("bN") || {}).value || 10) ? "selected" : ""}>${x}</option>`).join("")}</select> documentos (los más nuevos primero) <button onclick="docs(selDocs.base, selDocs.col)">↻</button>`;
+  const nSel = ($("bN") || {}).value || 10;
+  $("bDocs").textContent = "…";
+  const r = await fetch(`/api/db/docs?base=${base}&col=${col}&n=${nSel}`).then((x) => x.json());
+  $("bDocs").textContent = r.error ? "Error: " + r.error : JSON.stringify(r, null, 2);
+}
+setInterval(() => { if (pestanaActual === "negocio" && !document.hidden) negocio(); }, 3000);
+
 refrescar(); cargarConfig(); listarTrabajos();
+if (["#negocio", "#bases"].includes(location.hash)) pestana(location.hash.slice(1));
 setInterval(refrescar, 2500);
 setInterval(listarTrabajos, 2000);
 </script>

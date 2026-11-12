@@ -213,7 +213,40 @@ async function configActual() {
   return Object.entries(PERILLAS).map(([k, p]) => ({ var: k, svc: p.svc, ayuda: p.ayuda, opciones: p.opciones, efectivo: efectivos[`${p.svc}:${k}`] ?? "—", panel: overrides[destino][k] ?? null }));
 }
 
+// --- Bases de datos (SOLO LECTURA, vía mongosh dentro de cada contenedor) -----------
+const BASES = { auth: "auth-db", vehicles: "vehicles-db", inventory: "inventory-db", workorders: "workorders-db" };
+const OCULTOS = { passwordHash: 0, tokenHash: 0, anteriores: 0 }; // hashes de contraseñas y de refresh tokens
+async function mongo(base, js) {
+  const r = await run("docker", ["exec", `${D().proyecto}-${BASES[base]}-1`, "mongosh", "--quiet", base, "--eval", js], { timeout: 20000 });
+  if (r.code) throw new Error((r.stderr || r.stdout || "mongosh falló").trim().split("\n").slice(-2).join(" "));
+  return JSON.parse(r.stdout.trim().split("\n").pop());
+}
+const salidaJson = (expr) => `print(EJSON.stringify(${expr}, {relaxed: true}))`;
+
 const rutas = {
+  "GET /api/db": async (req, res) => {
+    const js = salidaJson("db.getCollectionNames().sort().map(c => ({ col: c, docs: db[c].countDocuments() }))");
+    const out = await Promise.all(Object.keys(BASES).map(async (b) => { try { return { base: b, contenedor: BASES[b], colecciones: await mongo(b, js) }; } catch (e) { return { base: b, contenedor: BASES[b], error: e.message }; } }));
+    json(res, 200, out);
+  },
+  "GET /api/db/docs": async (req, res, url) => {
+    const base = url.searchParams.get("base"), col = url.searchParams.get("col") || "";
+    const lim = n(url.searchParams.get("n"), 1, 50, 10);
+    if (!BASES[base] || !/^[A-Za-z_][\w]{0,60}$/.test(col)) return json(res, 400, { error: "base o colección inválida" });
+    try {
+      json(res, 200, await mongo(base, salidaJson(`db.getCollection(${JSON.stringify(col)}).find({}, ${JSON.stringify(OCULTOS)}).sort({ _id: -1 }).limit(${lim}).toArray()`)));
+    } catch (e) { json(res, 200, { error: e.message }); }
+  },
+  "GET /api/negocio": async (req, res) => {
+    const [inv, wo] = await Promise.all([
+      mongo("inventory", salidaJson(`({ repuestos: db.repuestos.find({}, { codigo: 1, nombre: 1, stock: 1 }).sort({ codigo: 1 }).limit(40).toArray(),
+        movimientos: db.movimientos.find({}, { codigo: 1, tipo: 1, cantidad: 1, stockAnterior: 1, stockResultante: 1, ordenId: 1, fecha: 1 }).sort({ _id: -1 }).limit(12).toArray(),
+        totalRepuestos: db.repuestos.countDocuments() })`)).catch((e) => ({ error: e.message })),
+      mongo("workorders", salidaJson(`({ porEstado: db.ordenes.aggregate([{ $group: { _id: "$estado", n: { $sum: 1 } } }]).toArray(),
+        ultimas: db.ordenes.find({}, { patente: 1, estado: 1, descripcion: 1, items: 1, reposicion: 1, createdAt: 1 }).sort({ _id: -1 }).limit(10).toArray() })`)).catch((e) => ({ error: e.message })),
+    ]);
+    json(res, 200, { inventory: inv, workorders: wo });
+  },
   "GET /api/estado": async (req, res) => json(res, 200, await estado()),
   "POST /api/destino": async (req, res) => {
     const p = await leerCuerpo(req);
