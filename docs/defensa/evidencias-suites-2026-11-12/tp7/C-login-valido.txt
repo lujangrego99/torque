@@ -1,0 +1,22 @@
+
+$ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local","password":"clave-de-prueba-1"}'
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":300,"refreshToken":"w4bda0saLYiZ60SH…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-12T17:53:36.587Z","usuario":{"id":"6af5f99a91b75adf3f39f11c","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:38:34.293Z"}}
+HTTP 200
+
+# Contenido del JWT (header.payload decodificados; la firma no se muestra):
+
+$ decodificar "$T_MEC1"
+header : {"alg":"HS256","typ":"JWT"}
+payload: {"rol":"MECANICO","sid":"6af5f99c91b75adf3f39f137","iat":1794505116,"exp":1794505416,"aud":"torque","iss":"torque-auth","sub":"6af5f99a91b75adf3f39f11c"}
+iat    : 2026-11-12T17:38:36.000Z
+exp    : 2026-11-12T17:43:36.000Z (vigencia 300 s)
+
+# Claims: sub (id del usuario), rol, iss, aud, iat y exp. Sin email, nombre, contraseña ni hash.
+# Login del admin inicial (credenciales desde .env):
+
+$ decodificar "$T_ADMIN"
+header : {"alg":"HS256","typ":"JWT"}
+payload: {"rol":"ADMIN","sid":"6af5f99d91b75adf3f39f13a","iat":1794505117,"exp":1794505417,"aud":"torque","iss":"torque-auth","sub":"6af5f9340955652b763448ba"}
+iat    : 2026-11-12T17:38:37.000Z
+exp    : 2026-11-12T17:43:37.000Z (vigencia 300 s)
+

@@ -1,0 +1,25 @@
+# Password incorrecta y usuario inexistente → el MISMO 401 genérico (no revela cuál falló)
+
+$ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local","password":"incorrecta-123"}'
+{"error":"Credenciales inválidas."}
+HTTP 401
+
+
+$ pedir '' POST /api/auth/login '{"email":"nadie@torque.local","password":"incorrecta-123"}'
+{"error":"Credenciales inválidas."}
+HTTP 401
+
+# Entrada inválida → 400
+
+$ pedir '' POST /api/auth/login '{"email":"mecanico1@torque.local"}'
+{"error":"Datos inválidos o incompletos.","detalles":["password es obligatoria."]}
+HTTP 400
+
+# Log interno: motivo técnico, email enmascarado, nunca la contraseña
+
+$ docker compose logs --no-color --since 30s auth-service | grep -E 'Login' | cut -d'|' -f2- | tail -n 4
+ 2026-11-12T17:38:37.362Z [INFO] [auth-service] Login OK sub=6af5f9340955652b763448ba rol=ADMIN sesion=6af5f99d91b75adf3f39f13a vence=2026-11-12T17:43:37.000Z rid=56c206f5-a751-4798-8e23-41048e8b6d68
+ 2026-11-12T17:38:37.751Z [INFO] [auth-service] Login OK sub=6af5f9340955652b763448ba rol=ADMIN sesion=6af5f99d91b75adf3f39f13d vence=2026-11-12T17:43:37.000Z rid=00ab3f46-f887-4db0-a6c2-9842f7a1c07b
+ 2026-11-12T17:38:38.113Z [WARN] [auth-service] Login fallido email=me***@torque.local motivo=password_incorrecta rid=26391ded-4a74-42d9-8ab4-3075715f3452
+ 2026-11-12T17:38:38.458Z [WARN] [auth-service] Login fallido email=na***@torque.local motivo=usuario_inexistente rid=b15fc55d-3422-439a-9c93-eb9aa7100986
+

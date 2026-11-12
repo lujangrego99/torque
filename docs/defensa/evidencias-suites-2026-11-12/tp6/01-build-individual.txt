@@ -1,0 +1,51 @@
+
+$ docker build -q -t torque/vehicles-service:tp6 ./services/vehicles-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+sha256:23bcbeb3cbffefaf1854c68c38948043988630ff64fd5fcc11f9633b360cc177
+
+
+$ docker build -q -t torque/inventory-service:tp6 ./services/inventory-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+sha256:f8e9e6c66e83da077e7c7fab6ff0255e1a9b21381dfc4d801f45d6eef94e92cc
+
+
+$ docker build -q -t torque/workorders-service:tp6 ./services/workorders-service 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+sha256:9752351847e84fea4db74754a87a9ab2f10b84f6a1f8693c5766b52f39d625d2
+
+
+$ docker build -q -t torque/api-gateway:tp6 ./services/api-gateway 2>&1 | grep -v -i -E 'deprecated|buildx|BuildKit'
+sha256:78018a6d2b9d9c666b333d01fbf74d2b08e459d75c589d152fd9974aa3e32b2c
+
+
+$ docker images 'torque/*' --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}'
+REPOSITORY:TAG                  SIZE
+torque/workorders-service:v2    282MB
+torque/inventory-service:v2     287MB
+torque/api-gateway:v2           265MB
+torque/vehicles-service:tp6     282MB
+torque/inventory-service:tp6    287MB
+torque/workorders-service:tp6   282MB
+torque/api-gateway:tp6          265MB
+torque/vehicles-service:v2      282MB
+torque/auth-service:v2          282MB
+torque/inventory-service:tp7    287MB
+torque/vehicles-service:tp7     282MB
+torque/workorders-service:tp7   282MB
+torque/auth-service:tp7         282MB
+torque/api-gateway:tp7          265MB
+
+# Ejecución individual de una imagen, sin su base: el proceso arranca, responde /health 503 (degraded)
+# y reintenta la conexión en lugar de caerse.
+
+$ docker run -d --rm --name torque-solo -p 39001:3000 -e MONGODB_URI=mongodb://no-existe:27017/vehicles -e JWT_SECRET=$JWT_SECRET torque/vehicles-service:tp6
+be39d3416d0810314d74f233d782b5b4925c4b44d4929d98f3c9c65b86dd1def
+
+
+$ curl -s -w '\nHTTP %{http_code}' http://localhost:39001/health
+{"service":"vehicles-service","status":"degraded","dependencias":{"mongo":"down"}}
+HTTP 503
+
+$ docker logs torque-solo 2>&1 | grep -E 'INFO|WARN|ERROR' | tail -n 4
+2026-11-12T17:39:51.653Z [WARN] [vehicles-service] MongoDB desconectado.
+2026-11-12T17:39:51.654Z [WARN] [vehicles-service] MongoDB no disponible (intento 1): Server selection timed out after 5000 ms. Reintento en 3000 ms.
+2026-11-12T17:39:51.654Z [ERROR] [vehicles-service] MongoDB: Server selection timed out after 5000 ms
+2026-11-12T17:39:54.289Z [ERROR] [vehicles-service] GET /health 503 1ms rid=425378ae-08be-459a-b77e-5626245cde7f
+

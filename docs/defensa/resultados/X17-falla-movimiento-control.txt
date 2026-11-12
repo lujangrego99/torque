@@ -1,0 +1,7 @@
+# X17 control: validador de Mongo rechaza movimientos INGRESO (simula fallo al guardar el movimiento después del $inc)
+collMod ok=1
+ingreso +5 con el libro rechazando → 500 {"error":"Error interno del servidor."}; stock 10 → 10; movimientos 1 (suma 10)
+⇒ PASS control: el $inc se revirtió (stock = libro)
+inventory-service-1  | 2026-11-12T17:34:30.748Z [ERROR] [inventory-service] POST /api/repuestos/6af5f89c6cb83cba0dbcf044/ingreso: error interno: Document failed validation Document failed validation
+inventory-service-1  | MongoServerError: Document failed validation
+inventory-service-1  | 2026-11-12T17:34:30.748Z [ERROR] [inventory-service] POST /api/repuestos/6af5f89c6cb83cba0dbcf044/ingreso 500 14ms rid=35a4359a-c90c-4e4c-8277-75e605bfc154

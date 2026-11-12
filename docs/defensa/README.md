@@ -8,6 +8,10 @@ Todo lo de este documento se corrió contra el stack completo en Docker (10 cont
 - Salida cruda de cada prueba: [`resultados/`](resultados/) (`.txt` legible + `.json`).
 - `DEMO_DELAY_MS`: Compose lo deja en **1000 ms** por defecto (retardo artificial del TP2 dentro de la sección crítica). Por eso se midió con 1000 (como está la demo) y con 0 (comportamiento real del código).
 
+> **Plan completo de pruebas (E01–E42 + X01–X35):** matriz con estado por ID en [PLAN-RESULTADOS.md](PLAN-RESULTADOS.md). Las 42 de las suites dan PASS sobre datos limpios y las 10 P0 también; los defectos P1/P2 quedan listados con su hallazgo.
+>
+> ⚠️ El `.env` de esta PC tiene `JWT_EXPIRES_IN=15m` (salió de un `.env.example` viejo). Revisar y dejar **5m** en la máquina de exposición.
+
 ## Resumen en 30 segundos
 
 | Pregunta | Respuesta medida |

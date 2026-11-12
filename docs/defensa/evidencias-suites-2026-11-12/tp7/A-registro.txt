@@ -1,0 +1,28 @@
+# Corrección (requisito 1): el alta es ADMINISTRADA. No hay registro público; los mecánicos los crea un ADMIN.
+# Estado inicial: solo el admin (se borran los MECANICO de corridas anteriores).
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.usuarios.deleteMany({rol: "MECANICO"}).deletedCount'
+2
+
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios '{"email":"mecanico1@torque.local","nombre":"Mecanico Uno","password":"clave-de-prueba-1"}'
+{"id":"6af5f99a91b75adf3f39f11c","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:38:34.293Z"}
+HTTP 201
+
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios '{"email":"mecanico2@torque.local","nombre":"Mecanico Dos","password":"clave-de-prueba-1"}'
+{"id":"6af5f99a91b75adf3f39f11f","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:38:34.672Z"}
+HTTP 201
+
+# Datos inválidos → 400 controlado
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios '{"email":"no-es-email","nombre":"X","password":"corta"}'
+{"error":"Datos inválidos o incompletos.","detalles":["email es obligatorio y debe tener formato válido.","nombre es obligatorio (2 a 60 caracteres).","password es obligatoria (mínimo 8 caracteres)."]}
+HTTP 400
+
+# El registro público ya no existe → 404
+
+$ pedir '' POST /api/auth/register '{"email":"otro@torque.local","nombre":"Otro","password":"clave-de-prueba-1"}'
+{"error":"Ruta no encontrada."}
+HTTP 404
+

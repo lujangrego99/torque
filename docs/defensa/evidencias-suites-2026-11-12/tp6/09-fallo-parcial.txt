@@ -1,0 +1,41 @@
+# Stock semilla: filtro=1, pastillas=4, bujías=8. Se agota el filtro con una orden previa.
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000001","descripcion":"Cambio de aceite","repuestos":[{"repuestoId":"68c000000000000000000011","cantidad":1}]}'
+{"id":"6af5fa3a6713f1cfa6076748","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6af5f9340955652b763448ba","descripcion":"Cambio de aceite","estado":"EN_PROCESO","items":[{"repuestoId":"68c000000000000000000011","codigo":"FIL-ACE-001","nombre":"Filtro de aceite","cantidad":1,"estado":"DESCONTADO","detalle":"stock restante 0"}],"requiereCompensacion":false,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:41:14.410Z","por":"6af5f9340955652b763448ba","detalle":"Orden registrada"},{"estado":"EN_PROCESO","fecha":"2026-11-12T17:41:15.428Z","por":"6af5f9340955652b763448ba","detalle":"Repuestos asignados"}],"creadaEn":"2026-11-12T17:41:14.411Z","actualizadaEn":"2026-11-12T17:41:15.428Z"}
+HTTP 201
+# Orden con 3 ítems: bujías (OK) → filtro (409 sin stock) → pastillas (no se intenta)
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000002","descripcion":"Service completo","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":4},{"repuestoId":"68c000000000000000000011","cantidad":1},{"repuestoId":"68c000000000000000000012","cantidad":1}]}'
+{"error":"No se pudo completar la orden: conflicto de stock.","orden":{"id":"6af5fa3b6713f1cfa607674d","vehiculoId":"68c000000000000000000002","patente":"AC456EF","creadaPor":"6af5f9340955652b763448ba","descripcion":"Service completo","estado":"FALLIDA","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":4,"estado":"REPUESTO","detalle":"repuestas 4 unidades (stock 8)"},{"repuestoId":"68c000000000000000000011","codigo":"FIL-ACE-001","nombre":"Filtro de aceite","cantidad":1,"estado":"RECHAZADO","detalle":"Stock insuficiente. Stock disponible de FIL-ACE-001: 0, solicitado: 1."},{"repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001","nombre":"Pastillas de freno delanteras","cantidad":1,"estado":"NO_INTENTADO"}],"falla":{"etapa":"descuento","servicio":"inventory-service","causa":"http_409","detalle":"Stock insuficiente. Stock disponible de FIL-ACE-001: 0, solicitado: 1."},"reposicion":{"estado":"COMPLETA","unidades":4,"fecha":"2026-11-12T17:41:16.861Z","intentos":1},"requiereCompensacion":false,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:41:15.819Z","por":"6af5f9340955652b763448ba","detalle":"Orden registrada"},{"estado":"FALLIDA","fecha":"2026-11-12T17:41:16.844Z","por":"6af5f9340955652b763448ba","detalle":"inventory-service: http_409"}],"creadaEn":"2026-11-12T17:41:15.821Z","actualizadaEn":"2026-11-12T17:41:16.863Z"}}
+HTTP 409
+# Estado parcial: las bujías YA se descontaron en inventory aunque la orden falló
+
+$ curl -X GET http://localhost:3100/api/repuestos
+[{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8},{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":0},{"id":"68c000000000000000000012","nombre":"Pastillas de freno delanteras","codigo":"PAS-FRE-001","stock":4}]
+HTTP 200
+
+$ curl -s 'http://localhost:3100/api/ordenes?estado=FALLIDA' | grep -o '"requiereCompensacion":[a-z]*' | sort | uniq -c
+      2 "requiereCompensacion":false
+
+
+$ docker compose logs --no-color --since 20s workorders-service | grep 'FALLO PARCIAL'
+workorders-service-1  | 2026-11-12T17:41:16.847Z [ERROR] [workorders-service] Orden 6af5fa3b6713f1cfa607674d FALLIDA en descuento (inventory-service: http_409) rid=ed9f2d30-d217-4404-930a-cd6f705e4c0f. FALLO PARCIAL: stock ya descontado/incierto para BUJ-NGK-001x4[DESCONTADO] — se repone automáticamente.
+
+# Variante timeout: inventory tarda más que el timeout de workorders → ítem INCIERTO
+
+$ INVENTORY_TIMEOUT_MS=500 docker compose up -d --wait workorders-service 2>&1 | tail -n 1
+ Container torque-defensa-workorders-service-1 Healthy 
+
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000002","descripcion":"Timeout demo","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":1}]}'
+{"error":"No se pudo completar la orden: dependencia no disponible.","orden":{"id":"6af5fa4420fa9a647022dec8","vehiculoId":"68c000000000000000000002","patente":"AC456EF","creadaPor":"6af5f9340955652b763448ba","descripcion":"Timeout demo","estado":"FALLIDA","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":1,"estado":"INCIERTO","detalle":"timeout: sin respuesta en 500 ms"}],"falla":{"etapa":"descuento","servicio":"inventory-service","causa":"timeout","detalle":"sin respuesta en 500 ms"},"reposicion":{"estado":"PENDIENTE","fecha":"2026-11-12T17:41:25.785Z","detalle":"inventory-service: timeout sin respuesta en 500 ms","intentos":1},"requiereCompensacion":true,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:41:24.733Z","por":"6af5f9340955652b763448ba","detalle":"Orden registrada"},{"estado":"FALLIDA","fecha":"2026-11-12T17:41:25.271Z","por":"6af5f9340955652b763448ba","detalle":"inventory-service: timeout"}],"creadaEn":"2026-11-12T17:41:24.748Z","actualizadaEn":"2026-11-12T17:41:25.787Z"}}
+HTTP 503
+# workorders dice INCIERTO, pero inventory sí descontó (8 → 7):
+
+$ curl -X GET http://localhost:3100/api/repuestos/68c000000000000000000013
+{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8}
+HTTP 200
+
+$ docker compose up -d --wait workorders-service 2>&1 | tail -n 1
+ Container torque-defensa-workorders-service-1 Healthy 
+

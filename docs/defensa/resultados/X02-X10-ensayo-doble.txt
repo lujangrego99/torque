@@ -1,0 +1,44 @@
+# X02/X10 — ensayo de la demo dos veces sobre instalación limpia
+Ensayo de la demo contra http://localhost:3100
+  OK    0. todos los servicios ok  → {"vehicles-service":"ok","inventory-service":"ok","workorders-service":"ok","auth-service":"ok"}
+  OK    0. Swagger accesible en /api-docs
+  OK    0. LAB_ENDPOINTS=false en .env
+     (JWT_EXPIRES_IN=15m  DEMO_DELAY_MS=1000)
+  OK    1. login ADMIN
+  OK    1. login MECANICO
+  OK    2. vehículo activo  → AB123CD
+     stock de los repuestos semilla: FIL-ACE-001=1  PAS-FRE-001=4  BUJ-NGK-001=8
+  OK    2. repuesto con stock suficiente (≥2) — USAR ESTE EN LA DEMO  → BUJ-NGK-001 stock 8
+  OK    3. orden 1 repuesto x1 → 201 EN_PROCESO  → 201 EN_PROCESO (1194 ms)
+  OK    4. movimiento DESCUENTO en el libro
+  OK    4. historial del vehículo la muestra
+  OK    4. finalizar → FINALIZADA
+  OK    5. cancelar EN_PROCESO → reposición COMPLETA  → stock 6 → 7
+  OK    6. sin token → 401
+  OK    6. MECANICO da de alta repuesto → 403
+
+Todo OK: la demo está lista.
+exit=0
+
+Ensayo de la demo contra http://localhost:3100
+  OK    0. todos los servicios ok  → {"vehicles-service":"ok","inventory-service":"ok","workorders-service":"ok","auth-service":"ok"}
+  OK    0. Swagger accesible en /api-docs
+  OK    0. LAB_ENDPOINTS=false en .env
+     (JWT_EXPIRES_IN=15m  DEMO_DELAY_MS=1000)
+  OK    1. login ADMIN
+  OK    1. login MECANICO
+  OK    2. vehículo activo  → AB123CD
+     stock de los repuestos semilla: FIL-ACE-001=1  PAS-FRE-001=4  BUJ-NGK-001=7
+  OK    2. repuesto con stock suficiente (≥2) — USAR ESTE EN LA DEMO  → BUJ-NGK-001 stock 7
+  OK    3. orden 1 repuesto x1 → 201 EN_PROCESO  → 201 EN_PROCESO (1042 ms)
+  OK    4. movimiento DESCUENTO en el libro
+  OK    4. historial del vehículo la muestra
+  OK    4. finalizar → FINALIZADA
+  OK    5. cancelar EN_PROCESO → reposición COMPLETA  → stock 5 → 6
+  OK    6. sin token → 401
+  OK    6. MECANICO da de alta repuesto → 403
+
+Todo OK: la demo está lista.
+exit=0
+rutas de laboratorio con LAB_ENDPOINTS=false: reiniciar → 404, lock → 404
+invariantes sobre todos los datos de la demo: 3 repuestos, 4 órdenes {"CANCELADA":2,"FINALIZADA":2} → OK

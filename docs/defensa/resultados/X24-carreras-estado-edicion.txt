@@ -1,0 +1,12 @@
+# X24-carreras-estado-edicion — 2026-11-12T17:33:41.384Z — gateway http://localhost:3100
+
+################ X24-carreras-estado-edicion
+   finalizar 200 / cancelar 409 → FINALIZADA, libro neto -1
+   finalizar 200 / cancelar 409 → FINALIZADA, libro neto -1
+   finalizar 200 / cancelar 409 → FINALIZADA, libro neto -1
+   finalizar 200 / cancelar 409 → FINALIZADA, libro neto -1
+   finalizar 200 / cancelar 409 → FINALIZADA, libro neto -1
+   dos PUT simultáneos (km 5000 y 7000) → 200, 200; queda km=7000: gana el último, sin aviso (actualización perdida, sin control de versión)
+   PUT vs baja simultáneos, 10 intentos: 9 vehículos quedaron inactivos CON la edición aplicada (H12 si > 0)
+[PASS] X24 Carreras de estado y edición
+        Orden: finalizar vs cancelar → siempre una 200 y otra 409, libro coherente (FFFFF). Vehículo: actualización perdida confirmada (último PUT gana); edición aplicada tras baja en 9/10 (H12).

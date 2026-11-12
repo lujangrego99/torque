@@ -1,0 +1,29 @@
+# Caso de uso que atraviesa 3 servicios: gateway → workorders → vehicles (GET) + inventory (POST descontar).
+# workorders reenvía el MISMO token del usuario; vehicles e inventory lo validan cada uno por su cuenta.
+
+$ pedir "$T_MEC1" POST /api/ordenes "{\"vehiculoId\":\"$VEH_COROLLA\",\"descripcion\":\"Cambio de bujías\",\"repuestos\":[{\"repuestoId\":\"$REP_BUJIAS\",\"cantidad\":1}]}"
+{"id":"6af5f9b73f3690cba6ae44a3","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6af5f99a91b75adf3f39f11c","descripcion":"Cambio de bujías","estado":"EN_PROCESO","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":1,"estado":"DESCONTADO","detalle":"stock restante 7"}],"requiereCompensacion":false,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:39:03.757Z","por":"6af5f99a91b75adf3f39f11c","detalle":"Orden registrada"},{"estado":"EN_PROCESO","fecha":"2026-11-12T17:39:04.772Z","por":"6af5f99a91b75adf3f39f11c","detalle":"Repuestos asignados"}],"creadaEn":"2026-11-12T17:39:03.758Z","actualizadaEn":"2026-11-12T17:39:04.772Z"}
+HTTP 201
+
+# Mismo request id en los 4 servicios; inventory aceptó el descuento con la identidad propagada:
+
+$ docker compose logs --no-color --since 30s | grep '3e1609e2-bf98-478a-bad9-a71768c58789' | cut -d'|' -f2- | cut -c27-
+[INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 3ms rid=3e1609e2-bf98-478a-bad9-a71768c58789
+[INFO] [inventory-service] Movimiento DESCUENTO BUJ-NGK-001 -1 → stock 7 orden=6af5f9b73f3690cba6ae44a3 sub=6af5f99a91b75adf3f39f11c rid=3e1609e2-bf98-478a-bad9-a71768c58789.
+[INFO] [inventory-service] POST /api/repuestos/68c000000000000000000013/descontar 200 1009ms rid=3e1609e2-bf98-478a-bad9-a71768c58789
+[INFO] [workorders-service] Orden 6af5f9b73f3690cba6ae44a3 registrada PENDIENTE (vehículo AB123CD, 1 repuestos, sub=6af5f99a91b75adf3f39f11c) rid=3e1609e2-bf98-478a-bad9-a71768c58789.
+[INFO] [workorders-service] Orden 6af5f9b73f3690cba6ae44a3 EN_PROCESO rid=3e1609e2-bf98-478a-bad9-a71768c58789.
+[INFO] [workorders-service] POST /api/ordenes 201 1025ms rid=3e1609e2-bf98-478a-bad9-a71768c58789
+[INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 2ms rid=3e1609e2-bf98-478a-bad9-a71768c58789
+[INFO] [api-gateway] HTTP POST /api/ordenes → workorders-service 201 1026ms rid=3e1609e2-bf98-478a-bad9-a71768c58789
+
+# La orden queda a nombre del sub del token (creadaPor):
+
+$ decodificar "$T_MEC1" | grep payload
+payload: {"rol":"MECANICO","sid":"6af5f9b73c06841e938f019a","iat":1794505143,"exp":1794505443,"aud":"torque","iss":"torque-auth","sub":"6af5f99a91b75adf3f39f11c"}
+
+# Sin identidad, el descuento se rechaza también DENTRO de la red backend (no se confía en el gateway):
+
+$ docker compose exec -T workorders-service node -e "fetch('http://inventory-service:3000/api/repuestos/68c000000000000000000013/descontar',{method:'POST',headers:{'content-type':'application/json'},body:'{\"cantidad\":1}'}).then(async r=>console.log(r.status, await r.text()))"
+401 {"error":"No autenticado.","detalles":["Falta el header Authorization: Bearer <token>."]}
+

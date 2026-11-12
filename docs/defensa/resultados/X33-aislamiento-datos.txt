@@ -1,0 +1,7 @@
+# X33-aislamiento-datos — 2026-11-12T17:33:54.331Z — gateway http://localhost:3100
+
+################ X33-aislamiento-datos
+workorders-db → inventory-db (sin credenciales): {"colecciones":["movimientos","repuestos"],"repuestos":12}
+vehicles-service (no usa Redis) → redis:6379 PING: +PONG
+[FAIL] X33 Aislamiento efectivo de datos
+        Separación lógica, no de red: desde otro dominio se lee inventory-db sin autenticación (sí) y vehicles-service alcanza Redis (+PONG). Confirma H08 (requisito de endurecimiento, no de la demo).

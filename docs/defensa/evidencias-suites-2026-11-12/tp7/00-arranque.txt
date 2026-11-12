@@ -1,0 +1,25 @@
+# Configuración: .env (no versionado) creado con scripts/generar-env.sh. Se muestran solo los nombres de las variables.
+
+$ git check-ignore -v .env
+.gitignore:5:.env	.env
+
+
+$ grep -E '^[A-Z_]+=' .env | cut -d= -f1 | tr '\n' ' '
+JWT_SECRET ADMIN_PASSWORD ADMIN_EMAIL ADMIN_NOMBRE JWT_EXPIRES_IN BCRYPT_ROUNDS GATEWAY_HTTP_PORT GATEWAY_HTTPS_PORT LOCK_TTL_MS DEMO_DELAY_MS VEHICLES_TIMEOUT_MS INVENTORY_TIMEOUT_MS PROXY_TIMEOUT_MS LOG_LEVEL COMPOSE_PROJECT_NAME 
+
+$ docker compose up --build -d --wait 2>&1 | tail -n 11
+ Container torque-defensa-auth-db-1 Waiting 
+ Container torque-defensa-vehicles-service-1 Healthy 
+ Container torque-defensa-inventory-service-1 Healthy 
+ Container torque-defensa-inventory-db-1 Healthy 
+ Container torque-defensa-auth-service-1 Healthy 
+ Container torque-defensa-workorders-service-1 Healthy 
+ Container torque-defensa-vehicles-db-1 Healthy 
+ Container torque-defensa-workorders-db-1 Healthy 
+ Container torque-defensa-auth-db-1 Healthy 
+ Container torque-defensa-redis-1 Healthy 
+ Container torque-defensa-api-gateway-1 Healthy 
+
+
+$ curl -s http://localhost:3100/health/servicios
+{"service":"api-gateway","status":"ok","servicios":{"vehicles-service":{"httpStatus":200,"service":"vehicles-service","status":"ok","dependencias":{"mongo":"up"}},"inventory-service":{"httpStatus":200,"service":"inventory-service","status":"ok","dependencias":{"mongo":"up","redis":"up"}},"workorders-service":{"httpStatus":200,"service":"workorders-service","status":"ok","dependencias":{"mongo":"up"}},"auth-service":{"httpStatus":200,"service":"auth-service","status":"ok","dependencias":{"mongo":"up"}}}}

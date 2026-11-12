@@ -1,0 +1,49 @@
+
+$ docker compose config --quiet && echo 'docker compose config: OK'
+docker compose config: OK
+
+
+$ docker compose up --build -d --wait 2>&1 | tail -n 12
+ Container torque-defensa-api-gateway-1 Waiting 
+ Container torque-defensa-workorders-db-1 Waiting 
+ Container torque-defensa-inventory-service-1 Healthy 
+ Container torque-defensa-vehicles-service-1 Healthy 
+ Container torque-defensa-vehicles-db-1 Healthy 
+ Container torque-defensa-workorders-db-1 Healthy 
+ Container torque-defensa-redis-1 Healthy 
+ Container torque-defensa-auth-service-1 Healthy 
+ Container torque-defensa-inventory-db-1 Healthy 
+ Container torque-defensa-workorders-service-1 Healthy 
+ Container torque-defensa-auth-db-1 Healthy 
+ Container torque-defensa-api-gateway-1 Healthy 
+
+
+$ docker compose ps --format 'table {{.Service}}\t{{.Status}}\t{{.Ports}}'
+SERVICE              STATUS                    PORTS
+api-gateway          Up 43 seconds (healthy)   0.0.0.0:3100->3000/tcp, [::]:3100->3000/tcp, 0.0.0.0:3543->3443/tcp, [::]:3543->3443/tcp
+auth-db              Up 49 seconds (healthy)   27017/tcp
+auth-service         Up 27 seconds (healthy)   3000/tcp
+inventory-db         Up 49 seconds (healthy)   27017/tcp
+inventory-service    Up 43 seconds (healthy)   3000/tcp
+redis                Up 49 seconds (healthy)   6379/tcp
+vehicles-db          Up 49 seconds (healthy)   27017/tcp
+vehicles-service     Up 43 seconds (healthy)   3000/tcp
+workorders-db        Up 49 seconds (healthy)   27017/tcp
+workorders-service   Up 43 seconds (healthy)   3000/tcp
+
+
+$ docker network ls --filter name=torque --format '{{.Name}} internal={{.Internal}}'
+torque-defensa_backend internal=false
+torque-defensa_edge internal=false
+
+
+$ docker volume ls --filter name=torque --format '{{.Name}}'
+torque-defensa_auth-data
+torque-defensa_inventory-data
+torque-defensa_vehicles-data
+torque-defensa_workorders-data
+torque_auth-data
+torque_inventory-data
+torque_vehicles-data
+torque_workorders-data
+

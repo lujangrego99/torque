@@ -1,0 +1,118 @@
+# Requisito 3: access token de 5 minutos + refresh token rotativo; vence a los 15 min sin uso; logout revoca.
+
+$ printf "%s" "$L" | ocultar | node -e "let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{const j=JSON.parse(d);delete j.usuario;console.log(j)})"
+{
+  accessToken: 'eyJhbGciOiJIUzI1…(oculto)',
+  tokenType: 'Bearer',
+  expiresIn: 300,
+  refreshToken: 'qdsjvxIJvrSyEoKP…(oculto)',
+  refreshExpiresIn: 900,
+  sesionVenceSinUsoEn: '2026-11-12T17:52:01.460Z'
+}
+
+
+$ decodificar "$A1"
+payload: {"rol":"MECANICO","sid":"6af5f93d0955652b763448d8","iat":1794505021,"exp":1794505321,"aud":"torque","iss":"torque-auth","sub":"6af5f93a0955652b763448c0"}
+vigencia: 300 s  (exp 2026-11-12T17:42:01.000Z)
+
+# Renovación con R1: access nuevo + refresh nuevo R2 (R1 se rota y deja de servir)
+
+$ printf "%s\n" "$OUT" | ocultar
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":300,"refreshToken":"I_Myh_REJSdVshbU…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-12T17:52:01.636Z"}
+HTTP 200
+
+# Reusar R1 (ya rotado) → 401 y se revoca la sesión entera (posible robo del refresh token)
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R1\"}"
+{"error":"Sesión no válida.","detalles":["El refresh token ya fue usado. Por seguridad se cerró la sesión: volver a iniciar sesión."]}
+HTTP 401
+
+# …por eso tampoco sirve el último refresh de esa sesión (protección ante robo):
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R2\"}"
+{"error":"Sesión no válida.","detalles":["La sesión fue cerrada."]}
+HTTP 401
+
+# Logout: nueva sesión, se cierra y el refresh queda cancelado → 401
+
+$ pedir "" POST /api/auth/logout "{\"refreshToken\":\"$R3\"}"
+
+HTTP 204
+
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R3\"}"
+{"error":"Sesión no válida.","detalles":["La sesión fue cerrada."]}
+HTTP 401
+
+# El access token ya emitido sigue valiendo hasta su exp (≤ 5 min): se verifica solo con la firma, sin consultar a auth.
+
+$ pedir "$A3" GET /api/auth/me | tail -n 1
+HTTP 200
+
+# Inactividad: se reinicia SOLO auth-service con SESSION_IDLE=8s (configuración externa).
+
+$ SESSION_IDLE=8s docker compose up -d --wait auth-service 2>&1 | tail -n 1
+ Container torque-defensa-auth-service-1 Healthy 
+
+# Uso continuo: renovar a los 5 s mantiene viva la sesión (cada renovación corre el plazo)…
+
+$ echo "renovado a los 5 s: ${R5:0:16}…(oculto)"
+renovado a los 5 s: PEW2gE_vn_BTj4m4…(oculto)
+
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R5\"}" | tail -n 1
+HTTP 200
+
+# …y sin usarla 10 s (> 8 s) la sesión vence por inactividad:
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R7\"}"
+{"error":"Sesión no válida.","detalles":["La sesión venció por inactividad. Volver a iniciar sesión."]}
+HTTP 401
+
+
+$ docker compose logs --no-color --since 40s auth-service | grep -E 'renovada|inactividad|reutilizado|Logout' | cut -d'|' -f2- | cut -c1-170 | tail -n 6
+ 2026-11-12T17:37:04.088Z [INFO] [auth-service] Escuchando en el puerto 3000 · JWT HS256 iss=torque-auth aud=torque vence=5m · inactividad=8s · bcrypt=12
+ 2026-11-12T17:37:13.991Z [INFO] [auth-service] Sesión renovada sub=6af5f93a0955652b763448c0 sesion=6af5f9444cd36c55cc600338 renovaciones=1 vence=2026-11-12T17:42:13.000Z
+ 2026-11-12T17:37:19.025Z [INFO] [auth-service] Sesión renovada sub=6af5f93a0955652b763448c0 sesion=6af5f9444cd36c55cc600338 renovaciones=2 vence=2026-11-12T17:42:19.000Z
+ 2026-11-12T17:37:29.429Z [INFO] [auth-service] Sesión vencida por inactividad sesion=6af5f94f4cd36c55cc600341 sub=6af5f93a0955652b763448c0 (último uso 2026-11-12T17:37:1
+ 2026-11-12T17:37:29.430Z [WARN] [auth-service] POST /api/auth/refresh: Sesión no válida. (La sesión venció por inactividad. Volver a iniciar sesión.)
+
+# Se restaura la configuración normal.
+
+$ docker compose up -d --wait auth-service 2>&1 | tail -n 1
+ Container torque-defensa-auth-service-1 Healthy 
+
+# Deshabilitar un usuario revoca sus sesiones:
+
+$ pedir "$T_ADMIN" PATCH /api/auth/usuarios/$ID_MEC2 "{\"activo\":false}" | tail -n 1
+HTTP 200
+
+
+$ pedir "" POST /api/auth/refresh "{\"refreshToken\":\"$R8\"}"
+{"error":"Sesión no válida.","detalles":["La sesión fue cerrada."]}
+HTTP 401
+
+
+$ pedir "$T_ADMIN" PATCH /api/auth/usuarios/$ID_MEC2 "{\"activo\":true}" | tail -n 1
+HTTP 200
+
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.sesiones.aggregate([{$group:{_id:"$motivoRevocacion",n:{$sum:1}}}]).toArray()'
+[
+  { _id: null, n: 7 },
+  { _id: 'usuario_deshabilitado', n: 2 },
+  { _id: 'reutilizacion_refresh_token', n: 1 },
+  { _id: 'logout', n: 1 },
+  { _id: 'inactividad', n: 1 }
+]
+
+# En la base se guarda solo el hash del refresh token, nunca el valor:
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.sesiones.findOne({}, {_id:0, tokenHash:1, ultimoUso:1, expiraEn:1, renovaciones:1, revocadaEn:1, motivoRevocacion:1})'
+{
+  tokenHash: '213f848d503f38a9f8a15be11485d3bc03e8fe7930fe1b877dce466370a081ee',
+  ultimoUso: ISODate('2026-11-12T17:36:58.471Z'),
+  expiraEn: ISODate('2026-11-12T17:51:58.471Z'),
+  renovaciones: 0
+}
+

@@ -1,0 +1,35 @@
+# X03-matriz-roles-propiedad — 2026-11-12T17:32:12.612Z — gateway http://localhost:3100
+
+################ X03-matriz-roles-propiedad
+   ✓ sin token GET /api/vehiculos: esperado 401 → 401
+   ✓ sin token GET /api/repuestos: esperado 401 → 401
+   ✓ sin token GET /api/ordenes: esperado 401 → 401
+   ✓ token basura GET /api/ordenes: esperado 401 → 401
+   ✓ sin token POST /api/auth/usuarios: esperado 401 → 401
+   ✓ MEC POST /api/auth/usuarios: esperado 403 → 403
+   ✓ MEC GET /api/auth/usuarios: esperado 403 → 403
+   ✓ ADMIN GET /api/auth/usuarios: esperado 200 → 200
+   ✓ MEC POST /api/vehiculos (alta permitida): esperado 201 → 201
+   ✓ MEC PUT /api/vehiculos/:id (edición permitida): esperado 200 → 200
+   ✓ MEC DELETE /api/vehiculos/:id (baja): esperado 403 → 403
+   ✓ MEC POST /api/vehiculos/:id/reactivar: esperado 403 → 403
+   ✓ ADMIN DELETE /api/vehiculos/:id: esperado 200 → 200
+   ✓ ADMIN reactivar: esperado 200 → 200
+   ✓ MEC POST /api/repuestos (alta): esperado 403 → 403
+   ✓ MEC POST ingreso: esperado 403 → 403
+   ✓ MEC POST ajuste: esperado 403 → 403
+   ✓ ADMIN POST ingreso: esperado 200 → 200
+   ✓ B GET orden de A: esperado 403 → 403
+   ✓ B PATCH orden de A: esperado 403 → 403
+   ✓ B cancelar orden de A: esperado 403 → 403
+   ✓ B finalizar orden de A: esperado 403 → 403
+   ✓ B reponer orden de A (workorders): esperado 403 → 403
+   ✓ B reponer orden de A DIRECTO en inventory: esperado 403 → 403
+   ✓ B GET /api/ordenes no lista la de A: esperado false → false
+   ✓ B historial del vehículo (lectura compartida): esperado 200 → 200
+   ✓ historial marca propia=false para B: esperado false → false
+   ✓ A PATCH su orden: esperado 200 → 200
+   ✓ ADMIN GET orden de A: esperado 200 → 200
+   ✓ ADMIN finaliza orden de A: esperado 200 → 200
+[PASS] X03 Matriz de roles y propiedad
+        30/30 filas según contrato. (Rutas directas de inventario con ordenId ajeno/inexistente: ver X20/X21).

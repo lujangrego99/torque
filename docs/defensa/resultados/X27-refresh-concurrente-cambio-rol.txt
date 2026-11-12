@@ -1,0 +1,7 @@
+# X27-refresh-concurrente-cambio-rol — 2026-11-12T17:33:48.172Z — gateway http://localhost:3100
+
+################ X27-refresh-concurrente-cambio-rol
+5 refresh simultáneos del MISMO token → 200, 401, 401, 401, 401; de los 1 OK, renovables después: 0
+Degradado ADMIN→MECANICO con access vigente: operación de ADMIN → 200 (retiene permisos hasta exp, 900s); tras refresh → 403
+[PASS] X27 Refresh concurrente y cambio de rol
+        Refresh concurrente: 1 de 5 aceptados, 0 cadenas válidas después. Rol degradado: el access viejo sigue siendo ADMIN (200) hasta vencer (H07); el refresh ya emite el rol nuevo (403).

@@ -1,0 +1,66 @@
+# Requisito 13: PENDIENTE → EN_PROCESO → FINALIZADA (además CANCELADA y FALLIDA)
+
+$ ver "$T_MEC1" GET /api/ordenes/$OE '' '({estado:j.estado, historial:j.historial.map(h=>h.estado)})'
+{
+  "estado": "EN_PROCESO",
+  "historial": [
+    "PENDIENTE",
+    "EN_PROCESO"
+  ]
+}
+HTTP 200
+
+# Editar la descripción (dueño, orden abierta) → 200
+
+$ ver "$T_MEC1" PATCH /api/ordenes/$OE '{"descripcion":"Cambio de bujías y cables"}' '({descripcion:j.descripcion, estado:j.estado})'
+{
+  "descripcion": "Cambio de bujías y cables",
+  "estado": "EN_PROCESO"
+}
+HTTP 200
+
+# Otro mecánico no puede finalizarla → 403; el dueño sí → FINALIZADA
+
+$ pedir "$T_MEC2" POST /api/ordenes/$OE/finalizar | tail -n 1
+HTTP 403
+
+
+$ ver "$T_MEC1" POST /api/ordenes/$OE/finalizar '' '({estado:j.estado, finalizacion:j.finalizacion?"por "+(j.finalizacion.por===USR.mec1?"mecanico1":j.finalizacion.por):null, historial:j.historial.map(h=>h.estado)})'
+{
+  "estado": "FINALIZADA",
+  "finalizacion": "por mecanico1",
+  "historial": [
+    "PENDIENTE",
+    "EN_PROCESO",
+    "FINALIZADA"
+  ]
+}
+HTTP 200
+
+# Una orden FINALIZADA ya no se cancela (los repuestos se usaron) ni se edita → 409
+
+$ pedir "$T_MEC1" POST /api/ordenes/$OE/cancelar "{\"motivo\":\"Me arrepentí\"}"
+{"error":"La orden no se puede cancelar.","detalles":["Estado actual: FINALIZADA. Solo se cancelan órdenes PENDIENTE o EN_PROCESO."]}
+HTTP 409
+
+
+$ pedir "$T_MEC1" PATCH /api/ordenes/$OE "{\"descripcion\":\"Otra cosa\"}" | tail -n 1
+HTTP 409
+
+
+$ stock
+BUJ-NGK-001  stock 4
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+# Filtros por los estados nuevos; un estado inexistente → 400
+
+$ ver "$T_ADMIN" GET '/api/ordenes' '' 'Object.entries(j.reduce((a,o)=>(a[o.estado]=(a[o.estado]||0)+1,a),{})).map(([k,v])=>k+": "+v).join(" · ")'
+FINALIZADA: 1 · FALLIDA: 1 · CANCELADA: 2 · EN_PROCESO: 1
+HTTP 200
+
+
+$ pedir "$T_ADMIN" GET '/api/ordenes?estado=CONFIRMADA'
+{"error":"Datos inválidos o incompletos.","detalles":["estado debe ser uno de: PENDIENTE, EN_PROCESO, FINALIZADA, CANCELADA, FALLIDA."]}
+HTTP 400
+

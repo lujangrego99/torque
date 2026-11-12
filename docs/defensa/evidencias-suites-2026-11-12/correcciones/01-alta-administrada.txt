@@ -1,0 +1,52 @@
+# Requisito 1: no hay registro abierto. El ADMIN da de alta a los mecánicos.
+# Estado inicial: solo el admin (se borran usuarios y sesiones de corridas anteriores).
+
+$ docker compose exec -T auth-db mongosh auth --quiet --eval 'db.sesiones.deleteMany({}); db.usuarios.deleteMany({rol: "MECANICO"}).deletedCount'
+0
+
+# El registro público ya no existe → 404
+
+$ pedir '' POST /api/auth/register '{"email":"mecanico1@torque.local","nombre":"Mecanico Uno","password":"clave-de-prueba-1"}'
+{"error":"Ruta no encontrada."}
+HTTP 404
+
+# Alta sin token → 401
+
+$ pedir '' POST /api/auth/usuarios '{"email":"mecanico1@torque.local","nombre":"Mecanico Uno","password":"clave-de-prueba-1"}'
+{"error":"No autenticado.","detalles":["Falta el header Authorization: Bearer <token>."]}
+HTTP 401
+
+# ADMIN crea dos mecánicos → 201 (la respuesta no incluye contraseña ni hash)
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"$MEC1\",\"nombre\":\"Mecanico Uno\",\"password\":\"$PASS_MEC\"}"
+{"id":"6af5f93a0955652b763448c0","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:36:58.829Z"}
+HTTP 201
+
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"$MEC2\",\"nombre\":\"Mecanico Dos\",\"password\":\"$PASS_MEC\"}"
+{"id":"6af5f93b0955652b763448c3","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:36:59.178Z"}
+HTTP 201
+
+# Validación (400) y duplicado, también con otra capitalización (409)
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"no-es-email\",\"nombre\":\"X\",\"password\":\"corta\"}"
+{"error":"Datos inválidos o incompletos.","detalles":["email es obligatorio y debe tener formato válido.","nombre es obligatorio (2 a 60 caracteres).","password es obligatoria (mínimo 8 caracteres)."]}
+HTTP 400
+
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios "{\"email\":\"MECANICO1@torque.local\",\"nombre\":\"Otro\",\"password\":\"$PASS_MEC\"}"
+{"error":"Conflicto de integridad.","detalles":["Ya existe un usuario con ese email."]}
+HTTP 409
+
+# Un MECANICO no puede dar de alta usuarios → 403
+
+$ pedir "$T_MEC1" POST /api/auth/usuarios "{\"email\":\"intruso@torque.local\",\"nombre\":\"Intruso\",\"password\":\"$PASS_MEC\",\"rol\":\"ADMIN\"}"
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+
+# El mecánico creado por el admin inicia sesión normalmente:
+
+$ pedir "" POST /api/auth/login "{\"email\":\"$MEC1\",\"password\":\"$PASS_MEC\"}"
+{"accessToken":"eyJhbGciOiJIUzI1…(oculto)","tokenType":"Bearer","expiresIn":300,"refreshToken":"j7gJkNiV0QdcRJFb…(oculto)","refreshExpiresIn":900,"sesionVenceSinUsoEn":"2026-11-12T17:51:59.928Z","usuario":{"id":"6af5f93a0955652b763448c0","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:36:58.829Z"}}
+HTTP 200
+

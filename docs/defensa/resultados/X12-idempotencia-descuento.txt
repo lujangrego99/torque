@@ -1,0 +1,7 @@
+# X12-idempotencia-descuento — 2026-11-12T17:32:51.452Z — gateway http://localhost:3100
+
+################ X12-idempotencia-descuento
+Secuencial: repetir el descuento de la orden 6af5f844c4726976f6f52f4a dos veces → 200 repetido=true, 200 repetido=true; stock 18 → 18
+Concurrente (5 iguales): 200, 409, 409, 409, 409; reintento posterior → 200 repetido=true; DESCUENTOS en el libro: 1; stock 20 → 17
+[PASS] X12 Idempotencia del descuento
+        Un solo efecto por orden+repuesto (secuencial y concurrente). Concurrentes: 1×200 y el resto 409 «ocupado»; el reintento devuelve el movimiento existente. (Nota: se usó un ordenId inexistente, lo que además reconfirma H03.)

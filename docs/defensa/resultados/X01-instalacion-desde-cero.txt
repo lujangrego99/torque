@@ -1,0 +1,31 @@
+# X01 — 2026-11-12T14:34:39-03:00 — SHA 8eb5286 (código de producto = 625d721)
+SO: Linux 7.3.3-1-cachyos; CPU: 12 hilos; RAM: 31 GB
+Docker 29.9.3
+Compose 5.7.0
+compose config: OK
+ Network torque-defensa_edge Removed 
+ Container torque-defensa-api-gateway-1 Healthy 
+up --build hasta healthy: 19 s
+api-gateway-1 Up 5 seconds (healthy)
+auth-db-1 Up 12 seconds (healthy)
+auth-service-1 Up 6 seconds (healthy)
+inventory-db-1 Up 12 seconds (healthy)
+inventory-service-1 Up 6 seconds (healthy)
+redis-1 Up 12 seconds (healthy)
+vehicles-db-1 Up 13 seconds (healthy)
+vehicles-service-1 Up 7 seconds (healthy)
+workorders-db-1 Up 12 seconds (healthy)
+workorders-service-1 Up 6 seconds (healthy)
+contenedores: 10
+swagger auth: 200
+swagger vehicles: 200
+swagger inventory: 200
+swagger workorders: 200
+swagger gateway: 200
+--- líneas ERROR/WARN en logs de arranque:
+api-gateway-1         | 2026-11-12T17:34:56.255Z [WARN] [api-gateway] Sin certificado en certs/: HTTPS deshabilitado. Generar con `bash scripts/generar-certificado.sh`.
+(fin)
+--- seed:
+vehicles-service-1   | 2026-11-12T17:34:55.098Z [INFO] [vehicles-service] Seed de vehículos insertado (3 documentos).
+inventory-service-1  | 2026-11-12T17:34:56.888Z [INFO] [inventory-service] Seed de repuestos insertado (3 documentos + movimientos iniciales).
+auth-service-1       | 2026-11-12T17:34:56.688Z [INFO] [auth-service] Administrador inicial creado (ad***@torque.local).

@@ -1,0 +1,39 @@
+
+$ curl -X POST http://localhost:3100/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Peugeot","modelo":"208","anio":2023,"patente":"AF208PP","kilometraje":5000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"}}'
+{"id":"6af5fa0322a879e86e6908d0","marca":"Peugeot","modelo":"208","anio":2023,"patente":"AF208PP","kilometraje":5000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 201
+# docker compose down (SIN -v): se eliminan los contenedores, los volúmenes quedan
+
+$ docker compose down 2>&1 | tail -n 3
+ Network torque-defensa_edge Removing 
+ Network torque-defensa_backend Removed 
+ Network torque-defensa_edge Removed 
+
+
+$ docker volume ls --filter name=torque --format '{{.Name}}'
+torque-defensa_auth-data
+torque-defensa_inventory-data
+torque-defensa_vehicles-data
+torque-defensa_workorders-data
+torque_auth-data
+torque_inventory-data
+torque_vehicles-data
+torque_workorders-data
+
+
+$ docker compose up -d --wait 2>&1 | tail -n 2
+ Container torque-defensa-inventory-service-1 Healthy 
+ Container torque-defensa-api-gateway-1 Healthy 
+
+
+$ curl -s http://localhost:3100/api/vehiculos | grep -o '"patente":"AF208PP"[^}]*' || echo 'NO ENCONTRADO'
+"patente":"AF208PP","kilometraje":5000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"
+
+
+$ curl -s http://localhost:3100/api/ordenes | grep -o -E '"estado":"(EN_PROCESO|FINALIZADA|CANCELADA|FALLIDA|PENDIENTE)","items' | sort | uniq -c
+      3 "estado":"CANCELADA","items
+      6 "estado":"EN_PROCESO","items
+      1 "estado":"FALLIDA","items
+      1 "estado":"FINALIZADA","items
+
+# Contenedores nuevos (otro ID), mismos datos. 'docker compose down -v' sí los borraría.

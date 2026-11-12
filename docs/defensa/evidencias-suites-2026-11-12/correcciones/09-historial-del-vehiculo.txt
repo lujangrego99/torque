@@ -1,0 +1,23 @@
+# Cualquier mecánico ve TODAS las órdenes del auto, en solo lectura (propia = puede editarla/cancelarla)
+
+$ ver "$T_MEC2" GET /api/ordenes/vehiculo/68c000000000000000000001 '' '({patente:j.patente, soloLectura:j.soloLectura, ordenes:j.ordenes.map(o=>o.estado.padEnd(11)+" propia="+o.propia+" · "+o.descripcion)})'
+{
+  "patente": "AB123CD",
+  "soloLectura": true,
+  "ordenes": [
+    "FINALIZADA  propia=false · Cambio de bujías y cables",
+    "CANCELADA   propia=false · Service de encendido y frenos"
+  ]
+}
+HTTP 200
+
+# …pero no puede operar sobre una orden ajena: cancelar → 403 (y su listado general sigue mostrando solo las propias)
+
+$ pedir "$T_MEC2" POST /api/ordenes/$OAJ/cancelar "{\"motivo\":\"Prueba de propiedad\"}" | tail -n 1
+HTTP 403
+
+
+$ ver "$T_MEC2" GET /api/ordenes '' 'j.every(o=>o.creadaPor===USR.mec2) ? "todas propias ("+j.length+")" : "HAY AJENAS"'
+todas propias (2)
+HTTP 200
+

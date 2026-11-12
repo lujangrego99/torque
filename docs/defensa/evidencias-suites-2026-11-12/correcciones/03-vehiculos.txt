@@ -1,0 +1,92 @@
+# Requisito 4: dueño obligatorio, duplicado detectado, baja lógica e historial.
+
+$ docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehiculos.deleteMany({patente: "AE001ZZ"}).deletedCount'
+0
+
+# Alta sin datos del dueño → 400
+
+$ pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000}"
+{"error":"Datos inválidos o incompletos.","detalles":["Los datos del dueño (duenio.nombre y duenio.telefono) son obligatorios."]}
+HTTP 400
+
+# Alta completa por un MECANICO → 201
+
+$ pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"
+{"id":"6af5f9634ace20ff9f1cc885","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 201
+
+# Mismo auto otra vez (la patente con guion y minúsculas se normaliza) → 409 con el vehículo existente, no se duplica
+
+$ pedir "$T_MEC2" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"ae-001zz\",\"kilometraje\":16000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"
+{"error":"Vehículo ya registrado.","detalles":["La patente AE001ZZ ya está cargada. Usar el vehículo existente."],"vehiculoExistente":{"id":"6af5f9634ace20ff9f1cc885","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}}
+HTTP 409
+
+# Se usa el existente para la orden nueva: alcanza con la patente
+
+$ ver "$T_MEC2" POST /api/ordenes '{"patente":"AE001ZZ","descripcion":"Revisión de frenos"}' '({id:j.id, vehiculoId:j.vehiculoId, patente:j.patente, estado:j.estado})'
+{
+  "id": "6af5f9633f3690cba6ae4457",
+  "vehiculoId": "6af5f9634ace20ff9f1cc885",
+  "patente": "AE001ZZ",
+  "estado": "EN_PROCESO"
+}
+HTTP 201
+
+# Baja: MECANICO → 403 · ADMIN → 200, baja LÓGICA (activo:false, quién, cuándo, motivo)
+
+$ pedir "$T_MEC1" DELETE /api/vehiculos/$VEH_NUEVO | tail -n 1
+HTTP 403
+
+
+$ pedir "$T_ADMIN" DELETE /api/vehiculos/$VEH_NUEVO "{\"motivo\":\"El dueño vendió el auto\"}"
+{"id":"6af5f9634ace20ff9f1cc885","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":false,"baja":{"fecha":"2026-11-12T17:37:39.584Z","por":"6af5f9340955652b763448ba","motivo":"El dueño vendió el auto"}}
+HTTP 200
+
+# El auto sigue en la base, no aparece en el listado de activos y no admite órdenes nuevas (409):
+
+$ docker compose exec -T vehicles-db mongosh vehicles --quiet --eval 'db.vehiculos.findOne({patente: "AE001ZZ"}, {_id:0, patente:1, activo:1, baja:1, duenio:1})'
+{
+  patente: 'AE001ZZ',
+  duenio: { nombre: 'Pedro Díaz', telefono: '261 555-0199' },
+  activo: false,
+  baja: {
+    fecha: ISODate('2026-11-12T17:37:39.584Z'),
+    por: '6af5f9340955652b763448ba',
+    motivo: 'El dueño vendió el auto'
+  }
+}
+
+
+$ pedir "$T_MEC1" GET /api/vehiculos | grep -c AE001ZZ || true
+0
+
+
+$ pedir "$T_MEC1" GET '/api/vehiculos?incluirInactivos=true' | grep -c AE001ZZ || true
+1
+
+
+$ pedir "$T_MEC1" POST /api/ordenes "{\"vehiculoId\":\"$VEH_NUEVO\",\"descripcion\":\"Cambio de aceite\"}"
+{"error":"Vehículo dado de baja.","detalles":["El vehículo AE001ZZ está inactivo: no admite órdenes nuevas."]}
+HTTP 409
+
+# Su historial se conserva (la orden previa sigue apuntando a un auto que existe):
+
+$ ver "$T_MEC1" GET /api/ordenes/vehiculo/$VEH_NUEVO '' '({patente:j.patente, ordenes:j.ordenes.map(o=>o.descripcion+" · "+o.estado)})'
+{
+  "patente": "AE001ZZ",
+  "ordenes": [
+    "Revisión de frenos · EN_PROCESO"
+  ]
+}
+HTTP 200
+
+# Modificar un vehículo inactivo → 409; ADMIN lo reactiva → 200
+
+$ pedir "$T_MEC1" PUT /api/vehiculos/$VEH_NUEVO "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":20000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}" | tail -n 2
+{"error":"Vehículo dado de baja.","detalles":["Un vehículo inactivo no se modifica. Un ADMIN puede reactivarlo."]}
+HTTP 409
+
+
+$ pedir "$T_ADMIN" POST /api/vehiculos/$VEH_NUEVO/reactivar | tail -n 1
+HTTP 200
+

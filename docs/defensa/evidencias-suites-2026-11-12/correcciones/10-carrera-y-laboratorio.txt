@@ -1,0 +1,85 @@
+# Requisito 8 (sin cambios): exclusión mutua con Redis; ahora además registra el movimiento.
+# Laboratorio activo (LAB_ENDPOINTS=true). Filtro de aceite con stock 1. Dos descuentos SIN lock a la vez:
+
+$ (pedir "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar-sin-lock '{"cantidad":1}' | tail -n 1 & pedir "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar-sin-lock '{"cantidad":1}' | tail -n 1; wait)
+HTTP 200
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock -1
+PAS-FRE-001  stock 4
+
+# Los dos pasaron el control con stock 1 (check-then-act sin lock). El libro registra el saldo real: el segundo lo dejó en -1
+
+$ libro "repuestoId=$REP_FILTRO"
+INGRESO    FIL-ACE-001    +1   0 → 1  orden=-  usuario=sistema  «Stock inicial (semilla)»
+DESCUENTO  FIL-ACE-001    -1   1 → 0  orden=-  usuario=ADMIN  «LABORATORIO: descontar-sin-lock»
+DESCUENTO  FIL-ACE-001    -1   0 → -1  orden=-  usuario=ADMIN  «LABORATORIO: descontar-sin-lock»
+
+# Mismo par CON lock (camino de las órdenes, órdenes A y B; B llega 0,3 s después, con A dentro de la sección crítica): A 200, B 409
+
+$ (pedir "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar '{"cantidad":1,"ordenId":"6730a1b2c3d4e5f6000000a1"}' | tail -n 1 & sleep 0.3; pedir "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar '{"cantidad":1,"ordenId":"6730a1b2c3d4e5f6000000b2"}' | tail -n 1; wait)
+HTTP 409
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 0
+PAS-FRE-001  stock 4
+
+# Reintento del mismo descuento (misma orden, p. ej. después de un timeout): no descuenta dos veces
+
+$ ver "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar '{"cantidad":1,"ordenId":"6730a1b2c3d4e5f6000000a1"}' '({mensaje:j.mensaje, repetido:j.repetido, error:j.error})'
+{
+  "mensaje": "Descuento ya registrado para esa orden (sin cambios).",
+  "repetido": true
+}
+HTTP 200
+
+# Descuento tardío de una orden ya repuesta → 409 (orden cerrada)
+
+$ pedir "$T_ADMIN" POST /api/repuestos/68c000000000000000000011/descontar '{"cantidad":1,"ordenId":"6730a1b2c3d4e5f6000000b2"}'
+{"error":"Orden cerrada.","detalles":["La orden 6730a1b2c3d4e5f6000000b2 ya fue repuesta: no se puede descontar para ella."]}
+HTTP 409
+
+# Requisito 16: sin la variable, los endpoints de laboratorio NO existen (404) y no aparecen en Swagger
+
+$ LAB_ENDPOINTS=false docker compose up -d --wait inventory-service 2>&1 | tail -n 1
+ Container torque-defensa-inventory-service-1 Healthy 
+
+
+$ pedir "$T_ADMIN" POST /api/repuestos/reiniciar
+{"error":"Ruta no encontrada."}
+HTTP 404
+
+
+$ pedir "$T_ADMIN" POST /api/repuestos/$REP_FILTRO/descontar-sin-lock "{}" | tail -n 1
+HTTP 404
+
+
+$ pedir "$T_ADMIN" GET /api/repuestos/$REP_FILTRO/lock | tail -n 1
+HTTP 404
+
+
+$ curl -s http://localhost:3100/api-docs/inventory.json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(Object.keys(JSON.parse(d).paths).join('\n')))"
+/health
+/api/repuestos
+/api/repuestos/movimientos
+/api/repuestos/reposiciones
+/api/repuestos/{id}
+/api/repuestos/{id}/ingreso
+/api/repuestos/{id}/ajuste
+/api/repuestos/{id}/descontar
+
+
+$ docker compose logs --no-color --since 30s inventory-service | grep -o 'laboratorio=[a-zA-Z]*' | tail -n 1
+laboratorio=apagado
+
+# Se vuelve a activar para el resto de las pruebas.
+
+$ LAB_ENDPOINTS=true docker compose up -d --wait inventory-service 2>&1 | tail -n 1
+ Container torque-defensa-inventory-service-1 Healthy 
+

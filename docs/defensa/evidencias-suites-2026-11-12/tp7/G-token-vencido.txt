@@ -1,0 +1,26 @@
+# Se reinicia SOLO auth-service con JWT_EXPIRES_IN=5s (configuración externa, sin tocar código).
+
+$ JWT_EXPIRES_IN=5s docker compose up -d --wait auth-service 2>&1 | tail -n 1
+ Container torque-defensa-auth-service-1 Healthy 
+
+
+$ decodificar "$T_CORTO" | tail -n 2
+iat    : 2026-11-12T17:38:46.000Z
+exp    : 2026-11-12T17:38:51.000Z (vigencia 5 s)
+
+
+$ pedir "$T_CORTO" GET /api/vehiculos/$VEH_COROLLA
+{"id":"68c000000000000000000001","marca":"Toyota","modelo":"Corolla","anio":2018,"patente":"AB123CD","kilometraje":95000,"duenio":{"nombre":"Laura Gómez","telefono":"261 555-0101"},"activo":true}
+HTTP 200
+
+# Se espera 7 segundos…
+
+$ pedir "$T_CORTO" GET /api/vehiculos/$VEH_COROLLA
+{"error":"No autenticado.","detalles":["El token venció."]}
+HTTP 401
+
+# Se restaura la vigencia normal.
+
+$ docker compose up -d --wait auth-service 2>&1 | tail -n 1
+ Container torque-defensa-auth-service-1 Healthy 
+

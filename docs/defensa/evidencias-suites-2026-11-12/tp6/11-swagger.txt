@@ -1,0 +1,20 @@
+
+$ curl -s http://localhost:3100/api-docs/ | grep -o '<title>[^<]*</title>'
+<title>torque — Swagger (api-gateway)</title>
+
+
+$ curl -s http://localhost:3100/api-docs/vehicles.json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.info.title, Object.entries(j.paths).map(([p,o])=>Object.keys(o).filter(k=>k!=='parameters').map(m=>m.toUpperCase()+' '+p).join(', ')).join(' | '))})"
+vehicles-service GET /health | GET /api/vehiculos, POST /api/vehiculos | GET /api/vehiculos/patente/{patente} | POST /api/vehiculos/{id}/reactivar | GET /api/vehiculos/{id}, PUT /api/vehiculos/{id}, DELETE /api/vehiculos/{id}
+
+
+$ curl -s http://localhost:3100/api-docs/inventory.json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.info.title, Object.entries(j.paths).map(([p,o])=>Object.keys(o).filter(k=>k!=='parameters').map(m=>m.toUpperCase()+' '+p).join(', ')).join(' | '))})"
+inventory-service GET /health | GET /api/repuestos, POST /api/repuestos | GET /api/repuestos/movimientos | POST /api/repuestos/reposiciones | GET /api/repuestos/{id} | POST /api/repuestos/{id}/ingreso | POST /api/repuestos/{id}/ajuste | POST /api/repuestos/{id}/descontar | POST /api/repuestos/reiniciar | GET /api/repuestos/{id}/lock | POST /api/repuestos/{id}/descontar-sin-lock
+
+
+$ curl -s http://localhost:3100/api-docs/workorders.json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.info.title, Object.entries(j.paths).map(([p,o])=>Object.keys(o).filter(k=>k!=='parameters').map(m=>m.toUpperCase()+' '+p).join(', ')).join(' | '))})"
+workorders-service GET /health | GET /api/ordenes, POST /api/ordenes | GET /api/ordenes/vehiculo/{vehiculoId} | GET /api/ordenes/{id}, PATCH /api/ordenes/{id} | POST /api/ordenes/{id}/cancelar | POST /api/ordenes/{id}/finalizar | POST /api/ordenes/{id}/reponer
+
+
+$ curl -s http://localhost:3100/api-docs/gateway.json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.info.title, Object.entries(j.paths).map(([p,o])=>Object.keys(o).filter(k=>k!=='parameters').map(m=>m.toUpperCase()+' '+p).join(', ')).join(' | '))})"
+api-gateway GET /health | GET /health/servicios | GET /metrics | GET /metrics/servicios | GET /api/{recurso}
+

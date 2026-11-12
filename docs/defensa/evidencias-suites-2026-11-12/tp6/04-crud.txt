@@ -1,0 +1,62 @@
+# Vehículos (vehicles-service vía gateway)
+
+$ curl -X GET http://localhost:3100/api/vehiculos
+[{"id":"68c000000000000000000001","marca":"Toyota","modelo":"Corolla","anio":2018,"patente":"AB123CD","kilometraje":95000,"duenio":{"nombre":"Laura Gómez","telefono":"261 555-0101"},"activo":true},{"id":"68c000000000000000000002","marca":"Ford","modelo":"Ranger","anio":2021,"patente":"AC456EF","kilometraje":42000,"duenio":{"nombre":"Martín Sosa","telefono":"261 555-0102"},"activo":true},{"id":"68c000000000000000000003","marca":"Volkswagen","modelo":"Gol","anio":2015,"patente":"AD789GH","kilometraje":130000,"duenio":{"nombre":"Carla Ruiz","telefono":"261 555-0103"},"activo":true}]
+HTTP 200
+
+$ curl -X POST http://localhost:3100/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"}}'
+{"id":"6af5f9f222a879e86e6908c0","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 201
+
+$ curl -X GET http://localhost:3100/api/vehiculos/6af5f9f222a879e86e6908c0
+{"id":"6af5f9f222a879e86e6908c0","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 200
+
+$ curl -X PUT http://localhost:3100/api/vehiculos/6af5f9f222a879e86e6908c0 -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"}}'
+{"id":"6af5f9f222a879e86e6908c0","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 200
+
+$ curl -X POST http://localhost:3100/api/vehiculos -H 'content-type: application/json' -d '{"marca":"Fiat","modelo":"Uno","anio":2010,"patente":"AE111ZZ","kilometraje":1,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"}}'
+{"error":"Vehículo ya registrado.","detalles":["La patente AE111ZZ ya está cargada. Usar el vehículo existente."],"vehiculoExistente":{"id":"6af5f9f222a879e86e6908c0","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}}
+HTTP 409
+
+$ curl -X POST http://localhost:3100/api/vehiculos -H 'content-type: application/json' -d '{"marca":"","anio":1800}'
+{"error":"Datos inválidos o incompletos.","detalles":["El campo marca es obligatorio y no puede estar vacío.","El campo modelo es obligatorio y no puede estar vacío.","El campo anio debe ser un entero entre 1900 y el año próximo.","El campo patente es obligatorio y no puede estar vacío.","El campo kilometraje es obligatorio y debe ser un entero mayor o igual a 0.","Los datos del dueño (duenio.nombre y duenio.telefono) son obligatorios."]}
+HTTP 400
+
+$ curl -X GET http://localhost:3100/api/vehiculos/68c000000000000000000099
+{"error":"Vehículo no encontrado."}
+HTTP 404
+
+$ curl -X DELETE http://localhost:3100/api/vehiculos/6af5f9f222a879e86e6908c0
+{"id":"6af5f9f222a879e86e6908c0","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE111ZZ","kilometraje":20000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":false,"baja":{"fecha":"2026-11-12T17:40:04.888Z","por":"6af5f9340955652b763448ba"}}
+HTTP 200
+# Repuestos (inventory-service vía gateway) — lock Redis del TP2
+
+$ curl -X GET http://localhost:3100/api/repuestos
+[{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8},{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":1},{"id":"68c000000000000000000012","nombre":"Pastillas de freno delanteras","codigo":"PAS-FRE-001","stock":4}]
+HTTP 200
+
+$ curl -X POST http://localhost:3100/api/repuestos/68c000000000000000000012/descontar -H 'content-type: application/json' -d '{"cantidad":1,"ordenId":"6730a1b2c3d4e5f600000001"}'
+{"mensaje":"Stock descontado.","item":{"id":"68c000000000000000000012","nombre":"Pastillas de freno delanteras","codigo":"PAS-FRE-001","stock":3},"movimiento":{"id":"6af5f9f6e8a6cc60efeaf52c","fecha":"2026-11-12T17:40:06.645Z","tipo":"DESCUENTO","repuestoId":"68c000000000000000000012","codigo":"PAS-FRE-001","cantidad":-1,"stockAnterior":4,"stockResultante":3,"usuario":"6af5f9340955652b763448ba","rol":"ADMIN","ordenId":"6730a1b2c3d4e5f600000001"},"lock":"lock:repuesto:68c000000000000000000012","proteccion":true}
+HTTP 200
+# Carrera sin lock: dos descuentos simultáneos sobre stock 1 → stock -1
+
+$ (curl -X POST http://localhost:3100/api/repuestos/68c000000000000000000011/descontar-sin-lock & curl -X POST http://localhost:3100/api/repuestos/68c000000000000000000011/descontar-sin-lock; wait)
+{"mensaje":"Stock descontado.","item":{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":0},"movimiento":{"id":"6af5f9f8e8a6cc60efeaf53c","fecha":"2026-11-12T17:40:08.647Z","tipo":"DESCUENTO","repuestoId":"68c000000000000000000011","codigo":"FIL-ACE-001","cantidad":-1,"stockAnterior":1,"stockResultante":0,"usuario":"6af5f9340955652b763448ba","rol":"ADMIN","ordenId":null,"motivo":"LABORATORIO: descontar-sin-lock"},"proteccion":false}
+HTTP 200{"mensaje":"Stock descontado.","item":{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":-1},"movimiento":{"id":"6af5f9f8e8a6cc60efeaf53f","fecha":"2026-11-12T17:40:08.791Z","tipo":"DESCUENTO","repuestoId":"68c000000000000000000011","codigo":"FIL-ACE-001","cantidad":-1,"stockAnterior":0,"stockResultante":-1,"usuario":"6af5f9340955652b763448ba","rol":"ADMIN","ordenId":null,"motivo":"LABORATORIO: descontar-sin-lock"},"proteccion":false}
+HTTP 200
+
+$ curl -X GET http://localhost:3100/api/repuestos/68c000000000000000000011
+{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":-1}
+HTTP 200
+# Con lock: uno 200, el otro 409 (recurso ocupado) → stock 0
+
+$ (curl -X POST http://localhost:3100/api/repuestos/68c000000000000000000011/descontar -H 'content-type: application/json' -d '{"ordenId":"6730a1b2c3d4e5f600000002"}' & sleep 0.3; curl -X POST http://localhost:3100/api/repuestos/68c000000000000000000011/descontar -H 'content-type: application/json' -d '{"ordenId":"6730a1b2c3d4e5f600000003"}'; wait)
+{"error":"Recurso ocupado.","detalles":["Otra operación está modificando el stock del repuesto 68c000000000000000000011. Reintentar."]}
+HTTP 409{"mensaje":"Stock descontado.","item":{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":0},"movimiento":{"id":"6af5f9fbe8a6cc60efeaf550","fecha":"2026-11-12T17:40:11.145Z","tipo":"DESCUENTO","repuestoId":"68c000000000000000000011","codigo":"FIL-ACE-001","cantidad":-1,"stockAnterior":1,"stockResultante":0,"usuario":"6af5f9340955652b763448ba","rol":"ADMIN","ordenId":"6730a1b2c3d4e5f600000002"},"lock":"lock:repuesto:68c000000000000000000011","proteccion":true}
+HTTP 200
+
+$ curl -X GET http://localhost:3100/api/repuestos/68c000000000000000000011
+{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":0}
+HTTP 200

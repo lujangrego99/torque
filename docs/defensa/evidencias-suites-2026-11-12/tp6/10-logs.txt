@@ -1,0 +1,27 @@
+
+$ docker compose logs --no-color --tail 4 vehicles-service inventory-service workorders-service api-gateway
+inventory-service-1  | 2026-11-12T17:41:25.765Z [INFO] [inventory-service] Movimiento DESCUENTO BUJ-NGK-001 -1 → stock 7 orden=6af5fa4420fa9a647022dec8 sub=6af5f9340955652b763448ba rid=49cd9521-86d3-4f7f-986b-7209bb7c35b1.
+inventory-service-1  | 2026-11-12T17:41:25.894Z [INFO] [inventory-service] Movimiento REPOSICION BUJ-NGK-001 +1 → stock 8 orden=6af5fa4420fa9a647022dec8 sub=6af5f9340955652b763448ba rid=49cd9521-86d3-4f7f-986b-7209bb7c35b1.
+inventory-service-1  | 2026-11-12T17:41:25.894Z [INFO] [inventory-service] Reposición orden=6af5fa4420fa9a647022dec8: BUJ-NGK-001:REPUESTO sub=6af5f9340955652b763448ba.
+inventory-service-1  | 2026-11-12T17:41:28.158Z [INFO] [inventory-service] GET /api/repuestos/68c000000000000000000013 200 2ms rid=8e1efec7-a143-4c51-a621-ff6a0f6962b0
+workorders-service-1  | > node src/index.js
+workorders-service-1  | 
+workorders-service-1  | 2026-11-12T17:41:29.623Z [INFO] [workorders-service] Escuchando en el puerto 3000 · Swagger en /api-docs · salud en /health · vehicles=http://vehicles-service:3000 (2000 ms) · inventory=http://inventory-service:3000 (5000 ms)
+workorders-service-1  | 2026-11-12T17:41:29.636Z [INFO] [workorders-service] MongoDB conectado en mongodb://workorders-db:27017/workorders (db=workorders)
+vehicles-service-1    | 2026-11-12T17:41:13.623Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 9ms rid=f18ab7bb-8ce1-4552-946b-842b20320bb0
+vehicles-service-1    | 2026-11-12T17:41:14.403Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000001 200 3ms rid=21dd14ed-5620-4a96-9899-067b6c941c07
+vehicles-service-1    | 2026-11-12T17:41:15.808Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 3ms rid=ed9f2d30-d217-4404-930a-cd6f705e4c0f
+vehicles-service-1    | 2026-11-12T17:41:24.718Z [INFO] [vehicles-service] GET /api/vehiculos/68c000000000000000000002 200 3ms rid=49cd9521-86d3-4f7f-986b-7209bb7c35b1
+api-gateway-1         | 2026-11-12T17:41:24.663Z [INFO] [api-gateway] HTTP POST /api/auth/login → auth-service 200 347ms rid=f6a8d2e4-9010-45b2-99cc-bd67f8b70c42
+api-gateway-1         | 2026-11-12T17:41:25.793Z [ERROR] [api-gateway] HTTP POST /api/ordenes → workorders-service 503 1119ms rid=49cd9521-86d3-4f7f-986b-7209bb7c35b1
+api-gateway-1         | 2026-11-12T17:41:28.144Z [INFO] [api-gateway] HTTP POST /api/auth/login → auth-service 200 341ms rid=b83079f9-f48b-405a-9cb9-42a88d58fa13
+api-gateway-1         | 2026-11-12T17:41:28.159Z [INFO] [api-gateway] HTTP GET /api/repuestos/68c000000000000000000013 → inventory-service 200 4ms rid=8e1efec7-a143-4c51-a621-ff6a0f6962b0
+
+
+$ docker compose logs --no-color inventory-service | grep -E 'WARN|ERROR' | tail -n 5
+inventory-service-1  | 2026-11-12T17:40:36.599Z [WARN] [inventory-service] LABORATORIO: stock de repuestos y libro de movimientos restaurados a la semilla.
+inventory-service-1  | 2026-11-12T17:41:14.022Z [WARN] [inventory-service] LABORATORIO: stock de repuestos y libro de movimientos restaurados a la semilla.
+inventory-service-1  | 2026-11-12T17:41:16.840Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar: Stock insuficiente. (Stock disponible de FIL-ACE-001: 0, solicitado: 1.)
+inventory-service-1  | 2026-11-12T17:41:16.840Z [WARN] [inventory-service] POST /api/repuestos/68c000000000000000000011/descontar 409 4ms rid=ed9f2d30-d217-4404-930a-cd6f705e4c0f
+inventory-service-1  | 2026-11-12T17:41:24.305Z [WARN] [inventory-service] LABORATORIO: stock de repuestos y libro de movimientos restaurados a la semilla.
+

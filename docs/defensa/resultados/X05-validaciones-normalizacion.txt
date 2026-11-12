@@ -1,0 +1,29 @@
+# X05-validaciones-normalizacion — 2026-11-12T17:32:18.490Z — gateway http://localhost:3100
+
+################ X05-validaciones-normalizacion
+   ✓ vehículo sin dueño: esperado 400 → 400
+   ✓ patente equivalente "zq 9Z-NA3": esperado 409 → 409
+   ✓ patente con caracteres inválidos: esperado 400 → 400
+   ✓ kilometraje negativo: esperado 400 → 400
+   ✓ teléfono inválido: esperado 400 → 400
+   ✓ GET vehículo id malformado: esperado 400 → 400
+   ✓ GET vehículo id inexistente: esperado 404 → 404
+   ✓ orden sobre vehículo inactivo: esperado 409 → 409
+   ✓ orden cantidad 0: esperado 400 → 400
+   ✓ orden cantidad -1: esperado 400 → 400
+   ✓ orden cantidad 1.5: esperado 400 → 400
+   ✓ orden cantidad "2" (string): esperado 400 → 400
+   ✓ orden repuesto repetido: esperado 400 → 400
+   ✓ orden repuesto inexistente: esperado 404 → 404
+   ✓ orden sin descripción: esperado 400 → 400
+   ✓ orden con vehiculoId y patente a la vez: esperado 400 → 400
+   ✓ orden por patente normalizada: esperado 201 → 201
+   ✓ ajuste 0: esperado 400 → 400
+   ✓ ajuste sin motivo: esperado 400 → 400
+   ✓ ajuste que deja negativo: esperado 409 → 409
+   ✓ ajuste negativo válido (-2): esperado 200 → 200
+   ✓ ingreso decimal: esperado 400 → 400
+   ✓ órdenes nuevas creadas (solo la válida por patente): esperado 1 → 1
+   ✓ stock cambió solo por el ajuste -2: esperado 48 → 48
+[PASS] X05 Validaciones y normalización
+        24/24 OK; sin escrituras parciales en los rechazos.

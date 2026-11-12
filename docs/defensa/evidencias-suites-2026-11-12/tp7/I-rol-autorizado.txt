@@ -1,0 +1,34 @@
+# MECANICO: alta de vehículo (MECANICO, ADMIN) → 201
+
+$ pedir "$T_MEC1" POST /api/vehiculos "{\"marca\":\"Fiat\",\"modelo\":\"Cronos\",\"anio\":2022,\"patente\":\"AE001ZZ\",\"kilometraje\":15000,\"duenio\":{\"nombre\":\"Pedro Díaz\",\"telefono\":\"261 555-0199\"}}"
+{"id":"6af5f9b64ace20ff9f1cc89e","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":true}
+HTTP 201
+
+# ADMIN: baja (lógica) del vehículo (solo ADMIN) → 200
+
+$ pedir "$T_ADMIN" DELETE /api/vehiculos/$VEH_NUEVO
+{"id":"6af5f9b64ace20ff9f1cc89e","marca":"Fiat","modelo":"Cronos","anio":2022,"patente":"AE001ZZ","kilometraje":15000,"duenio":{"nombre":"Pedro Díaz","telefono":"261 555-0199"},"activo":false,"baja":{"fecha":"2026-11-12T17:39:02.911Z","por":"6af5f9340955652b763448ba"}}
+HTTP 200
+
+# ADMIN: operación de laboratorio sobre stock → 200
+
+$ pedir "$T_ADMIN" POST /api/repuestos/reiniciar
+{"mensaje":"Stock y movimientos restaurados a la semilla.","items":[{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8},{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":1},{"id":"68c000000000000000000012","nombre":"Pastillas de freno delanteras","codigo":"PAS-FRE-001","stock":4}]}
+HTTP 200
+
+# ADMIN: administración de usuarios → 200 (sin hashes en la respuesta)
+
+$ pedir "$T_ADMIN" GET /api/auth/usuarios
+[{"id":"6af5f9340955652b763448ba","email":"admin@torque.local","nombre":"Administrador","rol":"ADMIN","activo":true,"creadoEn":"2026-11-12T17:36:52.258Z"},{"id":"6af5f99a91b75adf3f39f11c","email":"mecanico1@torque.local","nombre":"Mecanico Uno","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:38:34.293Z"},{"id":"6af5f99a91b75adf3f39f11f","email":"mecanico2@torque.local","nombre":"Mecanico Dos","rol":"MECANICO","activo":true,"creadoEn":"2026-11-12T17:38:34.672Z"}]
+HTTP 200
+
+# ADMIN ve las órdenes de todos; MECANICO 1 ve la suya
+
+$ pedir "$T_MEC1" GET /api/ordenes/$ORDEN | grep -E "creadaPor|HTTP" | head -c 200; echo
+{"id":"6af5f9b63f3690cba6ae449d","vehiculoId":"68c000000000000000000001","patente":"AB123CD","creadaPor":"6af5f99a91b75adf3f39f11c","descripcion":"Orden propia","estado":"EN_PROCESO","items":[],"requi
+
+
+$ pedir "$T_ADMIN" GET /api/ordenes/$ORDEN | grep -oE "\"creadaPor\":\"[a-f0-9]+\"|HTTP [0-9]+"
+"creadaPor":"6af5f99a91b75adf3f39f11c"
+HTTP 200
+

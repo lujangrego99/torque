@@ -1,0 +1,17 @@
+# X04-alta-administrada-inactivo — 2026-11-12T17:32:16.065Z — gateway http://localhost:3100
+
+################ X04-alta-administrada-inactivo
+   ✓ POST /api/auth/register (registro público): esperado 404 → 404
+   ✓ alta válida por ADMIN: esperado 201 → 201
+   ✓ duplicado (mayúsculas): esperado 409 → 409
+   ✓ email inválido / password corta: esperado 400 → 400
+   ✓ intento de crear ADMIN con rol en el body: esperado 201,400 → 400
+   ✓ ADMIN desactiva: esperado 200 → 200
+   ✓ login inactivo con clave correcta: esperado 403 → 403
+   ✓ login inactivo con clave incorrecta (mismo 401 genérico): esperado 401 → 401
+   ✓ refresh de la sesión previa (revocada al desactivar): esperado 401 → 401
+   ✓ access previo todavía vigente (H07, documentar): esperado 200 → 200
+   ✓ ADMIN reactiva: esperado 200 → 200
+   ✓ login tras reactivar: esperado 200 → 200
+[PASS] X04 Alta administrada y usuario inactivo
+        12/12 OK. Usuario desactivado conserva el access emitido hasta que vence (H07).

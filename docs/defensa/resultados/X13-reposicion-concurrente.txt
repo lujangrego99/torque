@@ -1,0 +1,7 @@
+# X13-reposicion-concurrente — 2026-11-12T17:32:54.270Z — gateway http://localhost:3100
+
+################ X13-reposicion-concurrente
+Orden EN_PROCESO con 4 unidades; stock 16. 3 reposiciones simultáneas → 200:REPUESTO, 200:YA_REPUESTO, 200:YA_REPUESTO; stock → 20
+Reintento secuencial → 200 YA_REPUESTO; REPOSICIONES en libro: 1
+[PASS] X13 Reposición repetida y concurrente
+        Una sola REPOSICION por efecto aun con 3 pedidos simultáneos (stock +4 exacto). Observación: se repuso stock de una orden EN_PROCESO que sigue EN_PROCESO (H03: la ruta directa no mira el estado).

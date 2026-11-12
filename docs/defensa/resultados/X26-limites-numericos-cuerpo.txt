@@ -1,0 +1,13 @@
+# X26-limites-numericos-cuerpo — 2026-11-12T17:33:47.702Z — gateway http://localhost:3100
+
+################ X26-limites-numericos-cuerpo
+   cantidad 2^53+1 (fuera de entero seguro) → 409 rid=sí  {"error":"No se pudo completar la orden: conflicto de stock.","orden":{"id":"6af5f87cc4726976f6f52f88","vehiculoId":"68c000000000000000000001","patente":"AB123C
+   cantidad 1e308 → 409 rid=sí  {"error":"No se pudo completar la orden: conflicto de stock.","orden":{"id":"6af5f87cc4726976f6f52f8e","vehiculoId":"68c000000000000000000001","patente":"AB123C
+   ingreso 2^53+1 → 200 rid=sí  {"mensaje":"Ingreso registrado.","item":{"id":"6af5f87c6cb83cba0dbcf032","nombre":"Prueba X26 TMR4TL8-0","codigo":"TMR4TL8-0","stock":9007199254741002},"movimie
+   JSON malformado → 400 rid=sí  {"error":"Datos inválidos o incompletos.","detalles":["El body no es un JSON válido."]}
+   cuerpo 200 KB (límite express.json 100 KB) → 500 rid=sí  {"error":"Error interno del servidor."}
+   cuerpo 2 MB (límite gateway 1 MB) → 500 rid=NO  {"error":"Error interno del gateway."}
+   11 repuestos (máx. 10) → 400 rid=sí  {"error":"Datos inválidos o incompletos.","detalles":["repuestos debe ser un arreglo de hasta 10 elementos."]}
+   stock del repuesto 10 → 9007199254741002
+[FAIL] X26 Límites numéricos y tamaño del cuerpo
+        cantidad 2^53+1 (fuera de entero seguro): 409 | cantidad 1e308: 409 | ingreso 2^53+1: 200 | JSON malformado: 400 | cuerpo 200 KB (límite express.json 100 KB): 500 | cuerpo 2 MB (límite gateway 1 MB): 500 | 11 repuestos (máx. 10): 400; stock 10→9007199254741002.

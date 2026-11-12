@@ -1,0 +1,95 @@
+[
+  {
+    "id": "X03",
+    "titulo": "Matriz de roles y propiedad",
+    "estado": "PASS",
+    "observado": "30/30 filas según contrato. (Rutas directas de inventario con ordenId ajeno/inexistente: ver X20/X21)."
+  },
+  {
+    "id": "X04",
+    "titulo": "Alta administrada y usuario inactivo",
+    "estado": "PASS",
+    "observado": "12/12 OK. Usuario desactivado conserva el access emitido hasta que vence (H07)."
+  },
+  {
+    "id": "X05",
+    "titulo": "Validaciones y normalización",
+    "estado": "PASS",
+    "observado": "24/24 OK; sin escrituras parciales en los rechazos."
+  },
+  {
+    "id": "X06",
+    "titulo": "Refresh, expiración y logout reales",
+    "estado": "PASS",
+    "observado": "9/9 OK. OJO: el .env de esta PC tiene JWT_EXPIRES_IN=15m, no 5m."
+  },
+  {
+    "id": "X09",
+    "titulo": "Diagnóstico visible y secretos",
+    "estado": "PASS",
+    "observado": "5 status controlados con x-request-id; rid propagado a 4/4 servicios; secretos en logs: ninguno."
+  },
+  {
+    "id": "X12",
+    "titulo": "Idempotencia del descuento",
+    "estado": "PASS",
+    "observado": "Un solo efecto por orden+repuesto (secuencial y concurrente). Concurrentes: 1×200 y el resto 409 «ocupado»; el reintento devuelve el movimiento existente. (Nota: se usó un ordenId inexistente, lo que además reconfirma H03.)"
+  },
+  {
+    "id": "X13",
+    "titulo": "Reposición repetida y concurrente",
+    "estado": "PASS",
+    "observado": "Una sola REPOSICION por efecto aun con 3 pedidos simultáneos (stock +4 exacto). Observación: se repuso stock de una orden EN_PROCESO que sigue EN_PROCESO (H03: la ruta directa no mira el estado)."
+  },
+  {
+    "id": "X23",
+    "titulo": "Mongo detenido por dominio",
+    "estado": "PASS",
+    "observado": "vehicles-db: lectura 503, escritura 503, otro dominio 200, recupera en 2.4 s | inventory-db: lectura 503, escritura 503, otro dominio 200, recupera en 1.2 s | auth-db: lectura 503, escritura 503, otro dominio 200, recupera en 1.2 s"
+  },
+  {
+    "id": "X24",
+    "titulo": "Carreras de estado y edición",
+    "estado": "PASS",
+    "observado": "Orden: finalizar vs cancelar → siempre una 200 y otra 409, libro coherente (FFFFF). Vehículo: actualización perdida confirmada (último PUT gana); edición aplicada tras baja en 9/10 (H12).",
+    "h12": 9
+  },
+  {
+    "id": "X26",
+    "titulo": "Límites numéricos y tamaño del cuerpo",
+    "estado": "FAIL",
+    "observado": "cantidad 2^53+1 (fuera de entero seguro): 409 | cantidad 1e308: 409 | ingreso 2^53+1: 200 | JSON malformado: 400 | cuerpo 200 KB (límite express.json 100 KB): 500 | cuerpo 2 MB (límite gateway 1 MB): 500 | 11 repuestos (máx. 10): 400; stock 10→9007199254741002."
+  },
+  {
+    "id": "X27",
+    "titulo": "Refresh concurrente y cambio de rol",
+    "estado": "PASS",
+    "observado": "Refresh concurrente: 1 de 5 aceptados, 0 cadenas válidas después. Rol degradado: el access viejo sigue siendo ADMIN (200) hasta vencer (H07); el refresh ya emite el rol nuevo (403).",
+    "aceptados": 1,
+    "cadenas": 0
+  },
+  {
+    "id": "X31",
+    "titulo": "Backup y restauración real (inventory)",
+    "estado": "PASS",
+    "observado": "mongodump/mongorestore a instancia nueva: 12 repuestos, stock 9007199254741276 = original 9007199254741276; libro restaurado suma 9007199254741276. Solo un dominio y sin carga concurrente: cuatro dumps separados no forman un punto consistente entre servicios."
+  },
+  {
+    "id": "X32",
+    "titulo": "TLS y exposición de puertos",
+    "estado": "PASS",
+    "observado": "Solo el gateway publica puertos (1 contenedor con puertos). HTTPS: sin certificado: el gateway solo sirve HTTP. HTTP sigue abierto por diseño (H09 si se exige TLS obligatorio)."
+  },
+  {
+    "id": "X33",
+    "titulo": "Aislamiento efectivo de datos",
+    "estado": "FAIL",
+    "observado": "Separación lógica, no de red: desde otro dominio se lee inventory-db sin autenticación (sí) y vehicles-service alcanza Redis (+PONG). Confirma H08 (requisito de endurecimiento, no de la demo)."
+  },
+  {
+    "id": "X34",
+    "titulo": "Dependencias, secretos e imágenes",
+    "estado": "PASS",
+    "observado": "npm audit (prod) por servicio: api-gateway=0, auth=0, vehicles=0, inventory=0, workorders=0 (altas/críticas: 0); .env/claves versionados: ninguno; secreto en historia: 0."
+  }
+]

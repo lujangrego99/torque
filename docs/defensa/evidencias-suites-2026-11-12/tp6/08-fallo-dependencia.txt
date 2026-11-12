@@ -1,0 +1,81 @@
+# 1) Solución completa: el caso de uso funciona
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000002","descripcion":"Cambio de bujias","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":4}]}'
+{"id":"6af5fa156713f1cfa607673e","vehiculoId":"68c000000000000000000002","patente":"AC456EF","creadaPor":"6af5f9340955652b763448ba","descripcion":"Cambio de bujias","estado":"EN_PROCESO","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":4,"estado":"DESCONTADO","detalle":"stock restante 4"}],"requiereCompensacion":false,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:40:37.037Z","por":"6af5f9340955652b763448ba","detalle":"Orden registrada"},{"estado":"EN_PROCESO","fecha":"2026-11-12T17:40:38.092Z","por":"6af5f9340955652b763448ba","detalle":"Repuestos asignados"}],"creadaEn":"2026-11-12T17:40:37.047Z","actualizadaEn":"2026-11-12T17:40:38.093Z"}
+HTTP 201
+# 2) Se detiene SOLO inventory-service (destino)
+
+$ docker compose stop inventory-service
+ Container torque-defensa-inventory-service-1 Stopping 
+ Container torque-defensa-inventory-service-1 Stopped 
+
+# 3) Se repite la operación desde workorders-service (origen) → 503 controlado, no 500
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000002","descripcion":"Cambio de bujias","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":4}]}'
+{"error":"Dependencia no disponible.","detalles":["inventory-service: timeout (sin respuesta en 5000 ms)","No se pudieron validar los repuestos. No se registró la orden."]}
+HTTP 503
+
+$ curl -X GET http://localhost:3100/api/repuestos
+{"error":"Servicio no disponible.","servicio":"inventory-service","causa":"dns","detalles":["inventory-service no respondió (dns: EAI_AGAIN). Reintentar más tarde."]}
+HTTP 503
+# 4) El origen y el resto siguen vivos
+
+$ docker compose ps --format '{{.Service}}: {{.Status}}' workorders-service vehicles-service api-gateway inventory-service
+api-gateway: Up 19 seconds (healthy)
+vehicles-service: Up 20 seconds (healthy)
+workorders-service: Up 19 seconds (healthy)
+
+
+$ curl -X GET http://localhost:3100/api/vehiculos/68c000000000000000000002
+{"id":"68c000000000000000000002","marca":"Ford","modelo":"Ranger","anio":2021,"patente":"AC456EF","kilometraje":42000,"duenio":{"nombre":"Martín Sosa","telefono":"261 555-0102"},"activo":true}
+HTTP 200
+
+$ curl -s -w '\nHTTP %{http_code}' http://localhost:3100/health/servicios
+{"service":"api-gateway","status":"degraded","servicios":{"vehicles-service":{"httpStatus":200,"service":"vehicles-service","status":"ok","dependencias":{"mongo":"up"}},"inventory-service":{"status":"down","causa":"timeout"},"workorders-service":{"httpStatus":200,"service":"workorders-service","status":"ok","dependencias":{"mongo":"up"}},"auth-service":{"httpStatus":200,"service":"auth-service","status":"ok","dependencias":{"mongo":"up"}}}}
+HTTP 503
+
+$ docker compose logs --no-color --since 30s workorders-service api-gateway | grep -E 'ERROR' | tail -n 6
+api-gateway-1  | 2026-11-12T17:40:49.232Z [ERROR] [api-gateway] → inventory-service GET /api/repuestos falló: dns (EAI_AGAIN) rid=486dd61a-f4ab-4899-aad4-81ed598bfa48
+api-gateway-1  | 2026-11-12T17:40:49.233Z [ERROR] [api-gateway] HTTP GET /api/repuestos → inventory-service 503 5008ms rid=486dd61a-f4ab-4899-aad4-81ed598bfa48
+api-gateway-1  | 2026-11-12T17:40:52.127Z [ERROR] [api-gateway] → inventory-service GET /health falló: timeout (sin respuesta en 2000 ms) rid=d67a7f44-6085-4bd7-b5f8-a69054a4e2ff
+api-gateway-1  | 2026-11-12T17:40:52.127Z [ERROR] [api-gateway] HTTP GET /health/servicios 503 2002ms rid=d67a7f44-6085-4bd7-b5f8-a69054a4e2ff
+workorders-service-1  | 2026-11-12T17:40:43.857Z [ERROR] [workorders-service] → inventory-service GET /api/repuestos/68c000000000000000000013 falló: timeout (sin respuesta en 5000 ms) rid=c5f36157-e803-4b74-b57a-af6697fce591
+workorders-service-1  | 2026-11-12T17:40:43.858Z [ERROR] [workorders-service] POST /api/ordenes 503 5009ms rid=c5f36157-e803-4b74-b57a-af6697fce591
+
+# 5) Se reinicia el destino y el caso de uso se recupera
+
+$ docker compose start inventory-service
+ Container torque-defensa-redis-1 Waiting 
+ Container torque-defensa-inventory-db-1 Waiting 
+ Container torque-defensa-redis-1 Healthy 
+ Container torque-defensa-inventory-db-1 Healthy 
+ Container torque-defensa-inventory-service-1 Starting 
+ Container torque-defensa-inventory-service-1 Started 
+
+
+$ curl -X POST http://localhost:3100/api/ordenes -H 'content-type: application/json' -d '{"vehiculoId":"68c000000000000000000002","descripcion":"Cambio de bujias","repuestos":[{"repuestoId":"68c000000000000000000013","cantidad":4}]}'
+{"id":"6af5fa2b6713f1cfa6076743","vehiculoId":"68c000000000000000000002","patente":"AC456EF","creadaPor":"6af5f9340955652b763448ba","descripcion":"Cambio de bujias","estado":"EN_PROCESO","items":[{"repuestoId":"68c000000000000000000013","codigo":"BUJ-NGK-001","nombre":"Bujía NGK","cantidad":4,"estado":"DESCONTADO","detalle":"stock restante 0"}],"requiereCompensacion":false,"historial":[{"estado":"PENDIENTE","fecha":"2026-11-12T17:40:59.322Z","por":"6af5f9340955652b763448ba","detalle":"Orden registrada"},{"estado":"EN_PROCESO","fecha":"2026-11-12T17:41:00.369Z","por":"6af5f9340955652b763448ba","detalle":"Repuestos asignados"}],"creadaEn":"2026-11-12T17:40:59.325Z","actualizadaEn":"2026-11-12T17:41:00.369Z"}
+HTTP 201
+# Extra — base caída: vehicles-db detenida → vehicles-service responde 503 (no se cae) y se recupera
+
+$ docker compose stop vehicles-db
+ Container torque-defensa-vehicles-db-1 Stopping 
+ Container torque-defensa-vehicles-db-1 Stopped 
+
+
+$ curl -X GET http://localhost:3100/api/vehiculos
+{"error":"Servicio no disponible.","detalles":["La base de datos de vehicles-service no está disponible."]}
+HTTP 503
+
+$ curl -s -w '\nHTTP %{http_code}' http://localhost:3100/health/servicios
+{"service":"api-gateway","status":"degraded","servicios":{"vehicles-service":{"httpStatus":503,"service":"vehicles-service","status":"degraded","dependencias":{"mongo":"down"}},"inventory-service":{"httpStatus":200,"service":"inventory-service","status":"ok","dependencias":{"mongo":"up","redis":"up"}},"workorders-service":{"httpStatus":200,"service":"workorders-service","status":"ok","dependencias":{"mongo":"up"}},"auth-service":{"httpStatus":200,"service":"auth-service","status":"ok","dependencias":{"mongo":"up"}}}}
+HTTP 503
+
+$ docker compose start vehicles-db
+ Container torque-defensa-vehicles-db-1 Starting 
+ Container torque-defensa-vehicles-db-1 Started 
+
+
+$ curl -X GET http://localhost:3100/api/vehiculos/68c000000000000000000002
+{"id":"68c000000000000000000002","marca":"Ford","modelo":"Ranger","anio":2021,"patente":"AC456EF","kilometraje":42000,"duenio":{"nombre":"Martín Sosa","telefono":"261 555-0102"},"activo":true}
+HTTP 200

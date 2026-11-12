@@ -1,0 +1,9 @@
+# X23-mongo-detenido-por-dominio — 2026-11-12T17:32:56.208Z — gateway http://localhost:3100
+
+################ X23-mongo-detenido-por-dominio
+vehicles-db detenida: lectura 503 (5018 ms), escritura 503 (5015 ms), otro dominio (órdenes) 200; primera lectura OK a los 2.4 s de levantarla
+inventory-db detenida: lectura 503 (5007 ms), escritura 503 (5009 ms), otro dominio (órdenes) 200; primera lectura OK a los 1.2 s de levantarla
+auth-db detenida: lectura 503 (5006 ms), escritura 503 (5005 ms), otro dominio (órdenes) 200; primera lectura OK a los 1.2 s de levantarla
+Libro del repuesto de prueba tras el ensayo: INGRESO 10; stock 10
+[PASS] X23 Mongo detenido por dominio
+        vehicles-db: lectura 503, escritura 503, otro dominio 200, recupera en 2.4 s | inventory-db: lectura 503, escritura 503, otro dominio 200, recupera en 1.2 s | auth-db: lectura 503, escritura 503, otro dominio 200, recupera en 1.2 s

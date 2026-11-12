@@ -1,0 +1,16 @@
+# X06-refresh-expiracion-logout — 2026-11-12T17:32:19.101Z — gateway http://localhost:3100
+
+################ X06-refresh-expiracion-logout
+Configuración vigente del .env: JWT_EXPIRES_IN=15m — se acorta a 6s solo para esta prueba.
+   línea temporal: login t=0, logout t=0.9s, vencimiento t≈6s, consulta final t=7.9s
+   ✓ login expiresIn: esperado 6 → 6
+   ✓ refresh válido (rota): esperado 200 → 200
+   ✓ refresh rotado devuelve token distinto: esperado true → true
+   ✓ reutilizar refresh viejo: esperado 401 → 401
+   ✓ tras reutilización se revoca la sesión entera (refresh nuevo también 401): esperado 401 → 401
+   ✓ logout: esperado 204 → 204
+   ✓ refresh tras logout: esperado 401 → 401
+   ✓ access tras logout, antes de exp (H07): esperado 200 → 200
+   ✓ access tras exp (+7 s): esperado 401 → 401
+[PASS] X06 Refresh, expiración y logout reales
+        9/9 OK. OJO: el .env de esta PC tiene JWT_EXPIRES_IN=15m, no 5m.

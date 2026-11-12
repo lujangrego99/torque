@@ -1,0 +1,18 @@
+# X32-tls-puertos — 2026-11-12T17:33:54.287Z — gateway http://localhost:3100
+
+################ X32-tls-puertos
+Archivos en certs/: README.md
+Puertos publicados:
+   torque-defensa-auth-service-1 3000/tcp
+   torque-defensa-api-gateway-1 0.0.0.0:3100->3000/tcp, [::]:3100->3000/tcp, 0.0.0.0:3543->3443/tcp, [::]:3543->3443/tcp
+   torque-defensa-inventory-service-1 3000/tcp
+   torque-defensa-workorders-service-1 3000/tcp
+   torque-defensa-vehicles-service-1 3000/tcp
+   torque-defensa-redis-1 6379/tcp
+   torque-defensa-auth-db-1 27017/tcp
+   torque-defensa-vehicles-db-1 27017/tcp
+   torque-defensa-workorders-db-1 27017/tcp
+   torque-defensa-inventory-db-1 27017/tcp
+HTTPS: sin certificado: el gateway solo sirve HTTP
+[PASS] X32 TLS y exposición de puertos
+        Solo el gateway publica puertos (1 contenedor con puertos). HTTPS: sin certificado: el gateway solo sirve HTTP. HTTP sigue abierto por diseño (H09 si se exige TLS obligatorio).

@@ -1,0 +1,18 @@
+
+$ docker --version
+Docker version 29.9.3, build 5457199aa5
+
+
+$ docker compose version
+Docker Compose version 5.7.0
+
+
+$ docker info --format 'Server {{.ServerVersion}} · {{.OperatingSystem}} · {{.NCPU}} CPU · cgroup {{.CgroupVersion}}'
+Server 29.9.3 · CachyOS · 12 CPU · cgroup 2
+
+
+$ docker run --rm hello-world | head -n 3
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+

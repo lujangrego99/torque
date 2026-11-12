@@ -1,0 +1,27 @@
+# Reset parcial (solo stock) — entre pruebas:
+
+$ bash scripts/reset-datos.sh
+== POST /api/repuestos/reiniciar
+{"mensaje":"Stock y movimientos restaurados a la semilla.","items":[{"id":"68c000000000000000000013","nombre":"Bujía NGK","codigo":"BUJ-NGK-001","stock":8},{"id":"68c000000000000000000011","nombre":"Filtro de aceite","codigo":"FIL-ACE-001","stock":1},{"id":"68c000000000000000000012","nombre":"Pastillas de freno delanteras","codigo":"PAS-FRE-001","stock":4}]}
+
+# Reset total (borra volúmenes y vuelve a sembrar):
+
+$ bash scripts/reset-datos.sh --todo 2>&1 | tail -n 2
+Listo: 3 vehículos, 3 repuestos (stock 1/4/8), 0 órdenes y solo el usuario admin.
+(Para la demo de carrera y reset-datos.sh sin --todo: LAB_ENDPOINTS=true docker compose up -d)
+
+
+$ curl -s http://localhost:3100/api/vehiculos | grep -o '"patente":"[A-Z0-9]*"'
+"patente":"AB123CD"
+"patente":"AC456EF"
+"patente":"AD789GH"
+
+
+$ curl -s http://localhost:3100/api/repuestos | grep -o '"codigo":"[A-Z0-9-]*","stock":[0-9-]*'
+"codigo":"BUJ-NGK-001","stock":8
+"codigo":"FIL-ACE-001","stock":1
+"codigo":"PAS-FRE-001","stock":4
+
+
+$ curl -s http://localhost:3100/api/ordenes
+[]

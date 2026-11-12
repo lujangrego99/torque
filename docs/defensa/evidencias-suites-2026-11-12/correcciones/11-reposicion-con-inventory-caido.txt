@@ -1,0 +1,61 @@
+# Resiliencia: si inventory no responde al cancelar, la orden se cancela igual y la reposición queda PENDIENTE.
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 2
+
+
+$ docker compose stop inventory-service 2>&1 | tail -n 1
+ Container torque-defensa-inventory-service-1 Stopped 
+
+
+$ ver "$T_MEC1" POST /api/ordenes/$OP/cancelar '{"motivo":"El cliente retiró el auto"}' '({estado:j.estado, requiereCompensacion:j.requiereCompensacion, reposicion:j.reposicion, items:j.items.map(i=>i.codigo+" "+i.estado)})'
+{
+  "estado": "CANCELADA",
+  "requiereCompensacion": true,
+  "reposicion": {
+    "estado": "PENDIENTE",
+    "fecha": "2026-11-12T17:38:20.376Z",
+    "detalle": "inventory-service: timeout sin respuesta en 5000 ms",
+    "intentos": 1
+  },
+  "items": [
+    "PAS-FRE-001 DESCONTADO"
+  ]
+}
+HTTP 200
+
+
+$ docker compose start inventory-service 2>&1 | tail -n 1
+ Container torque-defensa-inventory-service-1 Started 
+
+# El stock no se perdió: el libro sigue teniendo el descuento de la orden. Se reintenta → COMPLETA
+
+$ ver "$T_MEC1" POST /api/ordenes/$OP/reponer '' '({estado:j.estado, requiereCompensacion:j.requiereCompensacion, reposicion:j.reposicion, items:j.items.map(i=>i.codigo+" "+i.estado)})'
+{
+  "estado": "CANCELADA",
+  "requiereCompensacion": false,
+  "reposicion": {
+    "estado": "COMPLETA",
+    "unidades": 2,
+    "fecha": "2026-11-12T17:38:27.117Z",
+    "intentos": 2
+  },
+  "items": [
+    "PAS-FRE-001 REPUESTO"
+  ]
+}
+HTTP 200
+
+
+$ stock
+BUJ-NGK-001  stock 8
+FIL-ACE-001  stock 1
+PAS-FRE-001  stock 4
+
+
+$ pedir "$T_MEC1" POST /api/ordenes/$OP/reponer | tail -n 2
+{"error":"No hay reposición pendiente.","detalles":["Estado: CANCELADA, reposición: COMPLETA."]}
+HTTP 409
+

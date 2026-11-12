@@ -1,0 +1,22 @@
+# Solución levantada con un solo comando. LAB_ENDPOINTS=true solo para la demo de carrera (sección 10).
+
+$ docker compose ps --format '{{.Service}}\t{{.Status}}' | sort
+api-gateway	Up 5 seconds (healthy)
+auth-db	Up 12 seconds (healthy)
+auth-service	Up 7 seconds (healthy)
+inventory-db	Up 11 seconds (healthy)
+inventory-service	Up 6 seconds (healthy)
+redis	Up 12 seconds (healthy)
+vehicles-db	Up 12 seconds (healthy)
+vehicles-service	Up 6 seconds (healthy)
+workorders-db	Up 12 seconds (healthy)
+workorders-service	Up 6 seconds (healthy)
+
+
+$ curl -s http://localhost:3100/health/servicios | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.status);for(const[k,v]of Object.entries(j.servicios))console.log(' ',k.padEnd(20),v.status,JSON.stringify(v.dependencias||{}))})"
+ok
+  vehicles-service     ok {"mongo":"up"}
+  inventory-service    ok {"mongo":"up","redis":"up"}
+  workorders-service   ok {"mongo":"up"}
+  auth-service         ok {"mongo":"up"}
+

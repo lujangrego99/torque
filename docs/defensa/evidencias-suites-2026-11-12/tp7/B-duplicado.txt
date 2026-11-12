@@ -1,0 +1,17 @@
+# Mismo email (también con otra capitalización) → 409
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios '{"email":"mecanico1@torque.local","nombre":"Otro","password":"clave-de-prueba-1"}'
+{"error":"Conflicto de integridad.","detalles":["Ya existe un usuario con ese email."]}
+HTTP 409
+
+
+$ pedir "$T_ADMIN" POST /api/auth/usuarios '{"email":"MECANICO1@torque.local","nombre":"Otro","password":"clave-de-prueba-1"}'
+{"error":"Conflicto de integridad.","detalles":["Ya existe un usuario con ese email."]}
+HTTP 409
+
+# Un MECANICO no puede crear usuarios (ni auto-asignarse ADMIN) → 403
+
+$ pedir "$T_MEC1" POST /api/auth/usuarios '{"email":"intruso@torque.local","nombre":"Intruso","password":"clave-de-prueba-1","rol":"ADMIN"}'
+{"error":"Permisos insuficientes.","detalles":["Esta operación requiere el rol ADMIN."]}
+HTTP 403
+

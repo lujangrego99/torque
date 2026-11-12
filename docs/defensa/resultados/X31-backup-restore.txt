@@ -1,0 +1,7 @@
+# X31-backup-restore — 2026-11-12T17:33:49.649Z — gateway http://localhost:3100
+
+################ X31-backup-restore
+mongodump de inventory: 0.0 MB; restaurado en un mongo NUEVO (otro contenedor/volumen) en 3.5 s en total.
+Original: 12 repuestos, suma stock 9007199254741276. Restaurado: 12 repuestos, suma stock 9007199254741276, 26 movimientos, suma libro 9007199254741276, 7 índices.
+[PASS] X31 Backup y restauración real (inventory)
+        mongodump/mongorestore a instancia nueva: 12 repuestos, stock 9007199254741276 = original 9007199254741276; libro restaurado suma 9007199254741276. Solo un dominio y sin carga concurrente: cuatro dumps separados no forman un punto consistente entre servicios.
